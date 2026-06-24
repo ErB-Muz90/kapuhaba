@@ -6,8 +6,12 @@ import { generateToken, authMiddleware } from '../middleware/auth.js';
 const router = Router();
 
 router.get('/signup-check', async (_req, res) => {
-  const count = await prisma.user.count();
-  res.json({ canSignup: count === 0 });
+  try {
+    const count = await prisma.user.count();
+    res.json({ canSignup: count === 0 });
+  } catch {
+    res.json({ canSignup: true });
+  }
 });
 
 router.post('/signup', async (req, res) => {
@@ -29,7 +33,8 @@ router.post('/signup', async (req, res) => {
       user: { id: user.id, username: user.username, employeeId: user.employeeId, email: user.email, role: user.role, createdAt: user.createdAt.toISOString(), updatedAt: user.updatedAt.toISOString() },
     });
   } catch (err) {
-    res.status(400).json({ error: 'Signup failed' });
+    console.error('Signup error:', err);
+    res.status(400).json({ error: err instanceof Error ? err.message : 'Signup failed' });
   }
 });
 
