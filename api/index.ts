@@ -1,19 +1,18 @@
-import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import authRoutes from '../server/src/routes/auth';
-import productRoutes from '../server/src/routes/products';
-import customerRoutes from '../server/src/routes/customers';
-import supplierRoutes from '../server/src/routes/suppliers';
-import staffRoutes from '../server/src/routes/staff';
-import saleRoutes from '../server/src/routes/sales';
-import expenseRoutes from '../server/src/routes/expenses';
-import settingsRoutes from '../server/src/routes/settings';
-import shiftRoutes from '../server/src/routes/shifts';
-import purchaseOrderRoutes from '../server/src/routes/purchaseOrders';
-import stockRoutes from '../server/src/routes/stock';
-import accountsPayableRoutes from '../server/src/routes/accountsPayable';
-import loyaltyRoutes from '../server/src/routes/loyalty';
+import authRoutes from '../server/src/routes/auth.js';
+import productRoutes from '../server/src/routes/products.js';
+import customerRoutes from '../server/src/routes/customers.js';
+import supplierRoutes from '../server/src/routes/suppliers.js';
+import staffRoutes from '../server/src/routes/staff.js';
+import saleRoutes from '../server/src/routes/sales.js';
+import expenseRoutes from '../server/src/routes/expenses.js';
+import settingsRoutes from '../server/src/routes/settings.js';
+import shiftRoutes from '../server/src/routes/shifts.js';
+import purchaseOrderRoutes from '../server/src/routes/purchaseOrders.js';
+import stockRoutes from '../server/src/routes/stock.js';
+import accountsPayableRoutes from '../server/src/routes/accountsPayable.js';
+import loyaltyRoutes from '../server/src/routes/loyalty.js';
 
 const app = express();
 
