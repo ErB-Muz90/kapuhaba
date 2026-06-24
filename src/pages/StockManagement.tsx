@@ -64,7 +64,7 @@ export function StockManagement() {
     [products]
   );
 
-  const handleCreateAdjustment = (e: React.FormEvent) => {
+  const handleCreateAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!adjustmentForm.productId || adjustmentForm.quantityChange === 0 || !adjustmentForm.reason) {
@@ -72,15 +72,15 @@ export function StockManagement() {
       return;
     }
 
-    const result = createAdjustment(
-      adjustmentForm.productId,
-      adjustmentForm.type,
-      adjustmentForm.quantityChange,
-      adjustmentForm.reason,
-      user?.username || 'Unknown'
-    );
-
-    if (result) {
+    try {
+      await createAdjustment({
+        productId: adjustmentForm.productId,
+        productName: selectedProduct?.name || '',
+        type: adjustmentForm.type,
+        quantityChange: adjustmentForm.quantityChange,
+        reason: adjustmentForm.reason,
+        performedBy: user?.username || 'Unknown',
+      });
       toast.success('Stock adjustment recorded successfully');
       setAdjustmentModalOpen(false);
       setAdjustmentForm({
@@ -89,17 +89,26 @@ export function StockManagement() {
         quantityChange: 0,
         reason: '',
       });
-    } else {
-      toast.error('Failed to create adjustment. Check stock availability.');
+    } catch {
+      toast.error('Failed to create adjustment');
     }
   };
 
-  const handleStartStockCount = () => {
+  const handleStartStockCount = async () => {
     if (!user) return;
-    
-    startStockCount(user.username);
-    toast.success('Stock count started');
-    setCountModalOpen(false);
+
+    try {
+      await startStockCount({
+        performedBy: user.username,
+        date: new Date().toISOString(),
+        status: 'in_progress',
+        items: [],
+      });
+      toast.success('Stock count started');
+      setCountModalOpen(false);
+    } catch {
+      toast.error('Failed to start stock count');
+    }
   };
 
   const getAdjustmentColor = (change: number) => {

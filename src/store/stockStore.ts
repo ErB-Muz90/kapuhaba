@@ -9,9 +9,10 @@ interface StockStore {
   loading: boolean;
   fetchAdjustments: () => Promise<void>;
   fetchCounts: () => Promise<void>;
-  addAdjustment: (data: Omit<StockAdjustment, 'id' | 'previousQuantity' | 'newQuantity' | 'createdAt'>) => Promise<void>;
-  createCount: (data: Omit<StockCount, 'id' | 'createdAt'>) => Promise<void>;
+  createAdjustment: (data: Omit<StockAdjustment, 'id' | 'previousQuantity' | 'newQuantity' | 'createdAt'>) => Promise<void>;
+  startStockCount: (data: Omit<StockCount, 'id' | 'createdAt'>) => Promise<void>;
   completeCount: (id: string, items: StockCount['items']) => Promise<void>;
+  getStockValueByCategory: () => { category: string; value: number; count: number }[];
   getTotalStockValue: () => number;
 }
 
@@ -35,12 +36,12 @@ export const useStockStore = create<StockStore>()((set, get) => ({
     } catch {}
   },
 
-  addAdjustment: async (data) => {
+  createAdjustment: async (data) => {
     await api.post('/stock/adjustments', data);
     get().fetchAdjustments();
   },
 
-  createCount: async (data) => {
+  startStockCount: async (data) => {
     const created = await api.post<StockCount>('/stock/counts', data);
     set((state) => ({ counts: [...state.counts, created] }));
   },
@@ -56,6 +57,18 @@ export const useStockStore = create<StockStore>()((set, get) => ({
     set((state) => ({
       counts: state.counts.map((c) => c.id === id ? { ...c, items, status: 'completed' as const, completedAt: new Date().toISOString() } : c),
     }));
+  },
+
+  getStockValueByCategory: () => {
+    const productStore = useProductStore.getState();
+    const map = new Map<string, { value: number; count: number }>();
+    for (const p of productStore.products) {
+      const existing = map.get(p.category) || { value: 0, count: 0 };
+      existing.value += p.buyingPrice * p.stockQuantity;
+      existing.count += p.stockQuantity;
+      map.set(p.category, existing);
+    }
+    return Array.from(map.entries()).map(([category, { value, count }]) => ({ category, value, count }));
   },
 
   getTotalStockValue: () => {

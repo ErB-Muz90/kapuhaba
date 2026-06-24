@@ -274,10 +274,10 @@ model BusinessSettings {
   address                 String @default("")
   phone                   String @default("")
   email                   String @default("")
-  taxRate                 Float  @default(16)
+  taxRate                 Float  @default(0.16)
   currency                String @default("KES")
   currencySymbol          String @default("KSh")
   loyaltyPointsPerCurrency Int   @default(100)
   loyaltyRedemptionRate   Float  @default(1)
-  defaultFloat            Float  @default(5000)
+  defaultFloat            Float  @default(0)
 }
