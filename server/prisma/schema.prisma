@@ -1,0 +1,283 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  username   String   @unique
+  employeeId String   @unique
+  staffId    String?
+  email      String
+  role       String   @default("cashier")
+  password   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Product {
+  id                String   @id @default(uuid())
+  name              String
+  sku               String   @unique
+  barcode           String   @default("")
+  buyingPrice       Float
+  sellingPrice      Float
+  stockQuantity     Int      @default(0)
+  category          String   @default("")
+  lowStockThreshold Int      @default(5)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Sale {
+  id            String   @id @default(uuid())
+  items         Json
+  subtotal      Float
+  tax           Float
+  total         Float
+  paymentMethod String
+  customerId    String?
+  customerName  String?
+  cashierId     String
+  cashierName   String
+  createdAt     DateTime @default(now())
+}
+
+model Expense {
+  id            String   @id @default(uuid())
+  category      String
+  description   String
+  amount        Float
+  date          DateTime
+  dueDate       DateTime?
+  supplier      String?
+  paymentMethod String?
+  reference     String?
+  status        String   @default("pending")
+  approvedBy    String?
+  paidBy        String?
+  paidAt        DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Staff {
+  id               String   @id @default(uuid())
+  firstName        String
+  lastName         String
+  email            String
+  phone            String
+  role             String
+  employeeId       String   @unique
+  salary           Float
+  hireDate         DateTime
+  status           String   @default("active")
+  address          String?
+  emergencyContact String?
+  authUserId       String?
+  hasSystemAccess  Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model StaffOffDay {
+  id          String   @id @default(uuid())
+  staffId     String
+  staffName   String
+  type        String
+  date        DateTime
+  endDate     DateTime?
+  reason      String
+  status      String   @default("pending")
+  approvedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model StaffShift {
+  id          String  @id @default(uuid())
+  staffId     String
+  staffName   String
+  date        DateTime
+  startTime   String
+  endTime     String
+  hoursWorked Float
+  status      String  @default("scheduled")
+  notes       String?
+}
+
+model Supplier {
+  id              String   @id @default(uuid())
+  name            String
+  contactPerson   String
+  email           String
+  phone           String
+  address         String
+  taxId           String?
+  paymentTerms    Int      @default(30)
+  status          String   @default("active")
+  notes           String?
+  totalOrders     Int      @default(0)
+  totalSpent      Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PurchaseOrder {
+  id               String   @id @default(uuid())
+  poNumber         String   @unique
+  supplierId       String
+  supplierName     String
+  items            Json
+  subtotal         Float
+  tax              Float
+  shippingCost     Float    @default(0)
+  total            Float
+  status           String   @default("draft")
+  expectedDelivery DateTime?
+  receivedDate     DateTime?
+  notes            String?
+  createdBy        String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model AccountPayable {
+  id            String   @id @default(uuid())
+  supplierId    String
+  supplierName  String
+  poId          String?
+  poNumber      String?
+  invoiceNumber String
+  invoiceDate   DateTime
+  dueDate       DateTime
+  amount        Float
+  paidAmount    Float     @default(0)
+  balance       Float
+  status        String    @default("pending")
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model PayablePayment {
+  id            String   @id @default(uuid())
+  payableId     String
+  amount        Float
+  paymentMethod String
+  reference     String?
+  paidBy        String
+  paidAt        DateTime @default(now())
+}
+
+model Shift {
+  id            String   @id @default(uuid())
+  staffId       String
+  staffName     String
+  terminalId    String
+  startingFloat Float    @default(0)
+  openingCash   Float    @default(0)
+  closingCash   Float    @default(0)
+  status        String   @default("active")
+  startedAt     DateTime @default(now())
+  endedAt       DateTime?
+  notes         String?
+}
+
+model CashDrawerTransaction {
+  id            String   @id @default(uuid())
+  shiftId       String
+  type          String
+  amount        Float
+  method        String
+  notes         String?
+  referenceId   String?
+  referenceType String?
+  createdAt     DateTime @default(now())
+}
+
+model TerminalSession {
+  id        String   @id @default(uuid())
+  staffId   String
+  staffName String
+  terminalId String
+  shiftId   String?
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  status    String   @default("active")
+}
+
+model StockAdjustment {
+  id               String   @id @default(uuid())
+  productId        String
+  productName      String
+  type             String
+  quantityChange   Int
+  previousQuantity Int
+  newQuantity      Int
+  reason           String
+  reference        String?
+  performedBy      String
+  createdAt        DateTime @default(now())
+}
+
+model StockCount {
+  id          String   @id @default(uuid())
+  date        DateTime
+  status      String   @default("in_progress")
+  items       Json
+  performedBy String
+  notes       String?
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+}
+
+model LoyaltyAccount {
+  customerId         String   @id
+  customerName       String
+  phone              String
+  pointsBalance      Int      @default(0)
+  totalPointsEarned  Int      @default(0)
+  totalPointsRedeemed Int     @default(0)
+  tier               String   @default("bronze")
+  joinDate           DateTime @default(now())
+  lastActivity       DateTime @default(now())
+}
+
+model LoyaltyTransaction {
+  id          String   @id @default(uuid())
+  customerId  String
+  type        String
+  points      Int
+  saleId      String?
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model BusinessSettings {
+  id                      String @id @default("default")
+  name                    String @default("")
+  address                 String @default("")
+  phone                   String @default("")
+  email                   String @default("")
+  taxRate                 Float  @default(16)
+  currency                String @default("KES")
+  currencySymbol          String @default("KSh")
+  loyaltyPointsPerCurrency Int   @default(100)
+  loyaltyRedemptionRate   Float  @default(1)
+  defaultFloat            Float  @default(5000)
+}
