@@ -423,7 +423,7 @@ export function ShiftManagement() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Count the physical cash and enter total below
               </label>
-              <input type="number" value={closingCash || ''}
+              <input type="number" value={closingCash}
                 onChange={(e) => setClosingCash(parseFloat(e.target.value) || 0)}
                 placeholder="0.00" min="0" step="0.01" required
                 className="w-full px-4 py-3 text-2xl font-bold text-center border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
