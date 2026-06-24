@@ -195,7 +195,7 @@ export function POS() {
           })
           .join('');
         win.document.write(
-          `<html><head><title>Receipt</title><style>body{font-family:monospace;padding:20px}${styles}</style></head><body></body></html>`
+          `<html><head><title>Receipt</title><style>@page{margin:0;size:80mm auto}body{font-family:monospace;padding:4mm}${styles}</style></head><body></body></html>`
         );
         win.document.body.appendChild(content);
         win.document.close();

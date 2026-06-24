@@ -199,7 +199,8 @@ export function Reports() {
             <head>
               <title>Receipt</title>
               <style>
-                body { font-family: monospace; padding: 20px; }
+                @page { margin: 0; size: 80mm auto; }
+                body { font-family: monospace; padding: 4mm; }
                 @media print { body { padding: 0; } }
               </style>
             </head>

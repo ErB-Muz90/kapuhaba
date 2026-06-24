@@ -19,7 +19,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
         <div
           ref={ref}
           className="bg-white p-4 font-mono text-xs"
-          style={{ width: '300px' }}
+          style={{ width: '80mm' }}
         >
           {/* Header */}
           <div className="text-center mb-4">

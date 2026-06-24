@@ -431,7 +431,7 @@ export function ShiftManagement() {
             </div>
 
             {/* Variance */}
-            {closingCash > 0 && (
+            {(closingCash > 0 || summary?.expectedCash === 0) && (
               <div className={`p-4 rounded-xl flex items-center gap-3 ${
                 varianceAmount === 0 ? 'bg-green-50 border border-green-200' :
                 Math.abs(varianceAmount) <= 100 ? 'bg-yellow-50 border border-yellow-200' :
@@ -463,7 +463,7 @@ export function ShiftManagement() {
 
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="secondary" onClick={() => setEndModalOpen(false)} className="flex-1">Cancel</Button>
-              <Button type="submit" variant="danger" className="flex-1" disabled={closingCash <= 0}>
+              <Button type="submit" variant="danger" className="flex-1" disabled={closingCash < 0}>
                 <XCircle className="w-4 h-4" /> Close Shift
               </Button>
             </div>
