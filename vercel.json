@@ -5,7 +5,7 @@
   ],
   "functions": {
     "api/index.ts": {
-      "includeFiles": "server/prisma/**"
+      "includeFiles": "node_modules/.prisma/**"
     }
   }
 }
