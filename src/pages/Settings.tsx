@@ -29,10 +29,18 @@ export function Settings() {
     toast.success('Settings saved successfully');
   };
 
-  const handleResetData = () => {
-    if (confirm('Are you sure you want to reset all data? This will clear all products, customers, and sales. This action cannot be undone.')) {
+  const handleResetData = async () => {
+    if (!confirm('Are you sure you want to reset all data? This will delete all products, customers, sales, suppliers, staff, expenses, purchase orders, and account payables. This action cannot be undone.')) return;
+    if (!confirm('This is permanent. Type "RESET" to confirm.')) return;
+
+    try {
+      const res = await fetch('/api/reset/all', { method: 'DELETE', headers: { Authorization: `Bearer ${useAuthStore.getState().token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
       localStorage.clear();
       window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || 'Reset failed');
     }
   };
 

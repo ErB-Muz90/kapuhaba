@@ -14,6 +14,7 @@ import purchaseOrderRoutes from './routes/purchaseOrders.js';
 import stockRoutes from './routes/stock.js';
 import accountsPayableRoutes from './routes/accountsPayable.js';
 import loyaltyRoutes from './routes/loyalty.js';
+import resetRoutes from './routes/reset.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,6 +35,7 @@ app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/accounts-payable', accountsPayableRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
+app.use('/api/reset', resetRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
