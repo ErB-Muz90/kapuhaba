@@ -123,7 +123,7 @@ export const useSaleStore = create<SaleStore>()((set, get) => ({
         useShiftStore.getState().linkSaleToCashDrawer(activeShift.id, sale.id, total, paymentMethod);
       }
 
-      return sale;
+      return { ...sale, items: sale.items ?? [] };
     } catch {
       return null;
     }
