@@ -81,7 +81,9 @@ export const useShiftStore = create<ShiftStore>()((set, get) => ({
       float: startingFloat,
       staffId, staffName, terminalId,
     });
-    set((state) => ({ shifts: [shift, ...state.shifts], activeShiftId: shift.id }));
+    // Reload movements so the OPENING_FLOAT entry appears immediately
+    const movements = await api.get<CashMovement[]>('/shifts/transactions');
+    set((state) => ({ shifts: [shift, ...state.shifts], cashMovements: movements, activeShiftId: shift.id }));
     return shift;
   },
 
