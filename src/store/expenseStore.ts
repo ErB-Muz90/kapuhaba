@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
+import { useShiftStore } from './shiftStore';
 import type { Expense, ExpenseCategory, ExpenseStatus } from '../types';
 
 interface ExpenseStore {
@@ -63,6 +64,19 @@ export const useExpenseStore = create<ExpenseStore>()((set, get) => ({
 
   payExpense: async (id, paymentMethod, paidBy, reference) => {
     await api.put(`/expenses/${id}`, { status: 'paid', paymentMethod, paidBy, reference, paidAt: new Date().toISOString() });
+
+    // Create EXPENSE cash movement when paid with cash
+    if (paymentMethod === 'cash') {
+      const expense = get().expenses.find(e => e.id === id);
+      if (expense) {
+        const shiftStore = useShiftStore.getState();
+        const shift = shiftStore.getActiveShift();
+        if (shift) {
+          shiftStore.addCashMovement(shift.id, 'EXPENSE', 'OUT', expense.amount, expense.description, id, 'expense');
+        }
+      }
+    }
+
     set((state) => ({
       expenses: state.expenses.map((e) =>
         e.id === id ? { ...e, status: 'paid' as ExpenseStatus, paymentMethod, paidBy, reference, paidAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : e

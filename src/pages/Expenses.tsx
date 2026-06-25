@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { Modal } from '../components/Modal';
 import { Button } from '../components/Button';
@@ -54,8 +54,10 @@ export function Expenses() {
     notes: '',
   });
 
-  const { expenses, addExpense, approveExpense, payExpense, deleteExpense } = useExpenseStore();
+  const { expenses, fetch: fetchExpenses, addExpense, approveExpense, payExpense, deleteExpense } = useExpenseStore();
   const { user } = useAuthStore();
+
+  useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [payingExpense, setPayingExpense] = useState<Expense | null>(null);
@@ -262,7 +264,7 @@ export function Expenses() {
                     <tr key={expense.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <p className="font-medium text-gray-900">{expense.description}</p>
-                        <p className="text-sm text-gray-500">{expense.date}</p>
+                        <p className="text-sm text-gray-500">{format(new Date(expense.date), 'MMM d, yyyy')}</p>
                       </td>
                       <td className="px-6 py-4">
                         <span className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-full capitalize">
