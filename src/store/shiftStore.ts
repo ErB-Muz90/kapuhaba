@@ -47,9 +47,13 @@ export const useShiftStore = create<ShiftStore>()((set, get) => ({
   fetch: async () => {
     set({ loading: true });
     try {
-      const shifts = await api.get<Shift[]>('/shifts');
+      const [shifts, cashMovements, terminalSessions] = await Promise.all([
+        api.get<Shift[]>('/shifts'),
+        api.get<CashMovement[]>('/shifts/transactions'),
+        api.get<TerminalSession[]>('/shifts/sessions'),
+      ]);
       const active = shifts.find((s) => s.status === 'active');
-      set({ shifts, activeShiftId: active?.id || null, loading: false });
+      set({ shifts, cashMovements, terminalSessions, activeShiftId: active?.id || null, loading: false });
     } catch { set({ loading: false }); }
   },
 

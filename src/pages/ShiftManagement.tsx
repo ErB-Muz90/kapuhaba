@@ -35,6 +35,7 @@ export function ShiftManagement() {
   const {
     startShift, endShift, getActiveShift, addCashMovement,
     getCashBalance, getCashMovements, getShiftSummary, createSession,
+    fetchMovements, fetchSessions,
   } = useShiftStore();
   const sales = useSaleStore((s) => s.sales);
   const settings = useSettingsStore((s) => s.settings);
@@ -70,6 +71,12 @@ export function ShiftManagement() {
     if (txLogTab === 'digital') return []; // digital payments aren't cash movements
     return all;
   }, [activeShift, txLogTab, getCashMovements]);
+
+  // Fetch movements and sessions on mount / shift change
+  useEffect(() => {
+    fetchMovements();
+    fetchSessions();
+  }, [activeShift?.id, fetchMovements, fetchSessions]);
 
   // Timer
   useEffect(() => {
