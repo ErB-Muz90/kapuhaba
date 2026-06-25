@@ -67,6 +67,7 @@ export interface Sale {
   total: number;
   paymentMethod: PaymentMethod;
   payments?: Payment[];
+  shiftId?: string;
   customerId?: string;
   customerName?: string;
   cashierId: string;
@@ -120,8 +121,8 @@ export interface Payment {
 }
 
 // Shift & Cash Drawer Types
-export type ShiftStatus = 'active' | 'closed' | 'cancelled';
-export type CashMovementType = 'OPENING_FLOAT' | 'SALE_CASH' | 'CASH_IN' | 'EXPENSE' | 'PAYOUT' | 'BANKING';
+export type ShiftStatus = 'IDLE' | 'ACTIVE' | 'SUSPENDED' | 'CLOSING' | 'CLOSED' | 'active' | 'closed';
+export type CashMovementType = 'SALE' | 'EXPENSE' | 'PAYOUT' | 'FLOAT' | 'BANKING' | 'OPENING_FLOAT' | 'SALE_CASH' | 'CASH_IN';
 export type CashDirection = 'IN' | 'OUT';
 
 export interface Shift {
@@ -136,6 +137,8 @@ export interface Shift {
   expectedCash?: number;
   actualCash?: number;
   variance?: number;
+  retainedFloat?: number;
+  toBank?: number;
   notes?: string;
 }
 
@@ -143,11 +146,13 @@ export interface CashMovement {
   id: string;
   shiftId: string;
   type: CashMovementType;
+  method?: 'CASH' | 'MPESA' | 'CARD';
   direction: CashDirection;
   amount: number;
   notes?: string;
   referenceId?: string;
   referenceType?: 'sale' | 'payable' | 'expense' | 'other';
+  anomaly?: boolean;
   createdAt: string;
 }
 

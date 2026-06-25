@@ -76,51 +76,65 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const { payments, shiftId, ...saleData } = req.body;
 
-  const sale = await prisma.$transaction(async (tx) => {
-    const s = await tx.sale.create({
-      data: {
-        ...saleData,
-        payments: {
-          create: (payments as Array<{ method: string; amount: number }>) ?? [],
-        },
-      },
-      include: { payments: true },
-    });
+  try {
+    const sale = await prisma.$transaction(async (tx) => {
+      if (shiftId) {
+        const shift = await tx.shift.findUnique({ where: { id: shiftId } });
+        if (!shift) throw new Error('SHIFT_NOT_FOUND');
+        if (shift.status?.toUpperCase() === 'CLOSED') throw new Error('SHIFT_CLOSED');
+      }
 
-    // Only CASH payments create a cash drawer movement
-    if (shiftId) {
-      const cashPayments = (payments as Array<{ method: string; amount: number }>) ?? [];
-      const totalCash = cashPayments
-        .filter(p => p.method === 'CASH')
-        .reduce((sum, p) => sum + p.amount, 0);
-
-      if (totalCash > 0) {
-        await tx.cashDrawerTransaction.create({
-          data: {
-            shiftId,
-            type: 'SALE_CASH',
-            direction: 'IN',
-            amount: totalCash,
-            referenceId: s.id,
-            referenceType: 'sale',
-            notes: `Sale ${s.id.slice(0, 8)} - CASH`,
+      const s = await tx.sale.create({
+        data: {
+          ...saleData,
+          shiftId,
+          payments: {
+            create: (payments as Array<{ method: string; amount: number }>) ?? [],
           },
+        },
+        include: { payments: true },
+      });
+
+      // Only CASH payments create a cash drawer movement
+      if (shiftId) {
+        const cashPayments = (payments as Array<{ method: string; amount: number }>) ?? [];
+        const totalCash = cashPayments
+          .filter(p => p.method === 'CASH')
+          .reduce((sum, p) => sum + p.amount, 0);
+
+        if (totalCash > 0) {
+          await tx.cashDrawerTransaction.create({
+            data: {
+              shiftId,
+              type: 'SALE',
+              method: 'CASH',
+              direction: 'IN',
+              amount: totalCash,
+              referenceId: s.id,
+              referenceType: 'sale',
+              notes: `Sale ${s.id.slice(0, 8)} - CASH`,
+            },
+          });
+        }
+      }
+
+      // Deduct stock
+      for (const item of (saleData.items as Array<{ productId: string; quantity: number }>) ?? []) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: { decrement: item.quantity } },
         });
       }
-    }
 
-    // Deduct stock
-    for (const item of (saleData.items as Array<{ productId: string; quantity: number }>) ?? []) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stockQuantity: { decrement: item.quantity } },
-      });
-    }
+      return s;
+    });
 
-    return s;
-  });
-
-  res.json({ ...sale, items: sale.items ?? [], payments: sale.payments ?? [] });
+    res.json({ ...sale, items: sale.items ?? [], payments: sale.payments ?? [] });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'SHIFT_NOT_FOUND') { res.status(400).json({ error: 'Active shift not found' }); return; }
+    if (error instanceof Error && error.message === 'SHIFT_CLOSED') { res.status(400).json({ error: 'Cannot sell into a closed shift' }); return; }
+    res.status(500).json({ error: 'Failed to complete sale' });
+  }
 });
 
 router.delete('/:id', async (req, res) => {

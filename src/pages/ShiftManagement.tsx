@@ -13,7 +13,7 @@ import {
   Clock, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, XCircle, History, Plus, Building2, Banknote, Smartphone, CreditCard, Timer,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { differenceInMinutes } from 'date-fns';
+import { differenceInSeconds } from 'date-fns';
 import { safeFormat } from '../utils/format';
 import type { CashMovementType, CashDirection } from '../types';
 
@@ -23,10 +23,12 @@ export function ShiftManagement() {
   const [endModalOpen, setEndModalOpen] = useState(false);
   const [txModalOpen, setTxModalOpen] = useState(false);
   const [floatAmount, setFloatAmount] = useState(0);
-  const [actualCash, setActualCash] = useState(0);
-  const [txLogTab, setTxLogTab] = useState<'all' | 'cash' | 'digital'>('all');
+  const [zeroFloatConfirmed, setZeroFloatConfirmed] = useState(false);
+  const [countedCash, setCountedCash] = useState('');
+  const [retainedFloat, setRetainedFloat] = useState(0);
+  const [txLogTab, setTxLogTab] = useState<'all' | 'cash'>('all');
   const [txForm, setTxForm] = useState({
-    type: 'CASH_IN' as CashMovementType,
+    type: 'FLOAT' as CashMovementType,
     amount: 0,
     notes: '',
   });
@@ -45,16 +47,29 @@ export function ShiftManagement() {
   const activeShift = getActiveShift();
   const cashBalance = activeShift ? getCashBalance(activeShift.id) : 0;
   const summary = activeShift ? getShiftSummary(activeShift.id) : null;
+  const countedCashValue = countedCash === '' ? null : Number(countedCash);
 
   // Shift sales by payment method
   const shiftSales = useMemo(() => {
     if (!activeShift) return { total: 0, cash: 0, mpesa: 0, card: 0, count: 0 };
     const shiftStart = new Date(activeShift.startedAt);
-    return sales.filter((s) => new Date(s.createdAt) >= shiftStart).reduce(
+    const shiftEnd = activeShift.endedAt ? new Date(activeShift.endedAt) : null;
+    return sales.filter((s) => {
+      if (s.shiftId) return s.shiftId === activeShift.id;
+      const createdAt = new Date(s.createdAt);
+      return createdAt >= shiftStart && (!shiftEnd || createdAt <= shiftEnd);
+    }).reduce(
       (acc, sale) => {
         acc.total += sale.total;
         acc.count++;
-        if (sale.paymentMethod === 'cash') acc.cash += sale.total;
+        if (sale.payments?.length) {
+          for (const payment of sale.payments) {
+            const method = payment.method.toLowerCase();
+            if (method === 'cash') acc.cash += payment.amount;
+            else if (method === 'mpesa') acc.mpesa += payment.amount;
+            else if (method === 'card') acc.card += payment.amount;
+          }
+        } else if (sale.paymentMethod === 'cash') acc.cash += sale.total;
         else if (sale.paymentMethod === 'mpesa') acc.mpesa += sale.total;
         else if (sale.paymentMethod === 'card') acc.card += sale.total;
         return acc;
@@ -63,12 +78,11 @@ export function ShiftManagement() {
     );
   }, [sales, activeShift]);
 
-  // Filtered movement log
+  // Filtered movement log (all movements are physical cash drawer transactions)
   const txLog = useMemo(() => {
     if (!activeShift) return [];
     const all = getCashMovements(activeShift.id);
-    if (txLogTab === 'cash') return all.filter(m => m.direction === 'IN' || m.direction === 'OUT');
-    if (txLogTab === 'digital') return []; // digital payments aren't cash movements
+    if (txLogTab === 'cash') return all.filter(m => (m.method || 'CASH') === 'CASH');
     return all;
   }, [activeShift, txLogTab, getCashMovements]);
 
@@ -82,50 +96,75 @@ export function ShiftManagement() {
   useEffect(() => {
     if (!activeShift) { setElapsed(''); return; }
     const tick = () => {
-      const mins = differenceInMinutes(new Date(), new Date(activeShift.startedAt));
+      const seconds = Math.max(0, differenceInSeconds(new Date(), new Date(activeShift.startedAt)));
+      const mins = Math.floor(seconds / 60);
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       setElapsed(`${h}h ${m}m`);
     };
     tick();
-    const id = setInterval(tick, 30000);
+    const id = setInterval(tick, 10000);
     return () => clearInterval(id);
   }, [activeShift]);
 
-  const handleStartShift = (e: React.FormEvent) => {
+  const handleStartShift = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    startShift(user.id, user.username, 'TERMINAL-001', floatAmount);
-    createSession(user.id, user.username, 'TERMINAL-001');
-    toast.success(`Shift started · Float ${$c(floatAmount)}`);
-    setStartModalOpen(false);
-    setFloatAmount(0);
+    if (floatAmount === 0 && !zeroFloatConfirmed) {
+      toast.error('Confirm zero opening float or enter cash placed in drawer');
+      return;
+    }
+    try {
+      await startShift(user.id, user.username, 'TERMINAL-001', floatAmount, zeroFloatConfirmed);
+      await createSession(user.id, user.username, 'TERMINAL-001');
+      toast.success(`Shift started · Float ${$c(floatAmount)}`);
+      setStartModalOpen(false);
+      setFloatAmount(0);
+      setZeroFloatConfirmed(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not start shift');
+    }
   };
 
-  const handleEndShift = (e: React.FormEvent) => {
+  const handleEndShift = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeShift) return;
-    endShift(activeShift.id, actualCash);
-    toast.success('Shift closed');
-    setEndModalOpen(false);
-    setActualCash(0);
+    if (countedCashValue === null || !Number.isFinite(countedCashValue)) {
+      toast.error('Enter counted physical cash');
+      return;
+    }
+    if (retainedFloat > countedCashValue) {
+      toast.error('Retained float cannot exceed counted cash');
+      return;
+    }
+    try {
+      const result = await endShift(activeShift.id, countedCashValue, retainedFloat);
+      const label = result.variance === 0 ? 'balanced' : result.variance > 0 ? 'overage flagged' : 'shortage flagged';
+      toast.success(`Shift closed · ${label}`);
+      setEndModalOpen(false);
+      setCountedCash('');
+      setRetainedFloat(0);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not close shift');
+    }
   };
 
   const handleTx = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeShift || txForm.amount <= 0) { toast.error('Enter valid amount'); return; }
-    const direction: CashDirection = txForm.type === 'CASH_IN' ? 'IN' : 'OUT';
-    await addCashMovement(
+    const direction: CashDirection = txForm.type === 'FLOAT' ? 'IN' : 'OUT';
+    const movement = await addCashMovement(
       activeShift.id, txForm.type, direction, txForm.amount,
       txForm.notes || txForm.type.replace(/_/g, ' '),
       undefined, 'other'
     );
-    toast.success('Transaction recorded');
+    toast.success(movement ? 'Transaction recorded' : 'Offline: transaction queued');
     setTxModalOpen(false);
-    setTxForm({ type: 'CASH_IN', amount: 0, notes: '' });
+    setTxForm({ type: 'FLOAT', amount: 0, notes: '' });
   };
 
-  const varianceAmount = summary ? actualCash - summary.expectedCash : 0;
+  const varianceAmount = summary && countedCashValue !== null ? countedCashValue - summary.expectedCash : 0;
+  const toBankAmount = countedCashValue === null ? 0 : Math.max(0, countedCashValue - retainedFloat);
 
   return (
     <Layout>
@@ -148,7 +187,7 @@ export function ShiftManagement() {
                 <Button variant="secondary" onClick={() => setTxModalOpen(true)}>
                   <Plus className="w-4 h-4" /> Cash In / Out
                 </Button>
-                <Button variant="danger" onClick={() => { setActualCash(0); setEndModalOpen(true); }}>
+                <Button variant="danger" onClick={() => { setCountedCash(''); setRetainedFloat(summary?.openingFloat ?? 0); setEndModalOpen(true); }}>
                   <XCircle className="w-4 h-4" /> End Shift
                 </Button>
               </div>
@@ -325,8 +364,9 @@ export function ShiftManagement() {
                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                   <History className="w-5 h-5 text-gray-400" /> Transaction Log
                 </h2>
+                <p className="text-xs text-gray-400">Physical cash drawer movements only. Digital payments (M-Pesa/Card) are tracked in the Sales Summary above.</p>
                 <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                  {(['all', 'cash', 'digital'] as const).map(tab => (
+                  {(['all', 'cash'] as const).map(tab => (
                     <button key={tab} onClick={() => setTxLogTab(tab)}
                       className={`px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-colors ${txLogTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                     >{tab}</button>
@@ -390,6 +430,17 @@ export function ShiftManagement() {
             onChange={(e) => setFloatAmount(parseFloat(e.target.value) || 0)}
             placeholder="0.00" min="0" step="0.01" required
           />
+          {floatAmount === 0 && (
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={zeroFloatConfirmed}
+                onChange={(e) => setZeroFloatConfirmed(e.target.checked)}
+                className="mt-1"
+              />
+              <span>I confirm this shift is opening with no physical cash float.</span>
+            </label>
+          )}
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setStartModalOpen(false)} className="flex-1">Cancel</Button>
             <Button type="submit" className="flex-1"><Clock className="w-4 h-4" /> Start</Button>
@@ -419,15 +470,26 @@ export function ShiftManagement() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Count the physical cash and enter total below
               </label>
-              <input type="number" value={actualCash}
-                onChange={(e) => setActualCash(parseFloat(e.target.value) || 0)}
+              <input type="number" value={countedCash}
+                onChange={(e) => setCountedCash(e.target.value)}
                 placeholder="0.00" min="0" step="0.01" required
                 className="w-full px-4 py-3 text-2xl font-bold text-center border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input label="Retained Float" type="number" value={retainedFloat}
+                onChange={(e) => setRetainedFloat(parseFloat(e.target.value) || 0)}
+                placeholder="0.00" min="0" max={countedCashValue ?? undefined} step="0.01" required
+              />
+              <div className="p-4 bg-blue-50 rounded-xl">
+                <p className="text-sm text-blue-700">To Bank</p>
+                <p className="text-2xl font-extrabold text-blue-900">{$c(toBankAmount)}</p>
+              </div>
+            </div>
+
             {/* Variance */}
-            {(actualCash > 0 || summary?.expectedCash === 0) && (
+            {countedCashValue !== null && (
               <div className={`p-4 rounded-xl flex items-center gap-3 ${
                 varianceAmount === 0 ? 'bg-green-50 border border-green-200' :
                 Math.abs(varianceAmount) <= 100 ? 'bg-yellow-50 border border-yellow-200' :
@@ -459,7 +521,7 @@ export function ShiftManagement() {
 
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="secondary" onClick={() => setEndModalOpen(false)} className="flex-1">Cancel</Button>
-              <Button type="submit" variant="danger" className="flex-1" disabled={actualCash < 0}>
+              <Button type="submit" variant="danger" className="flex-1" disabled={countedCashValue === null || countedCashValue < 0 || retainedFloat > countedCashValue}>
                 <XCircle className="w-4 h-4" /> Close Shift
               </Button>
             </div>
@@ -472,7 +534,7 @@ export function ShiftManagement() {
         <form onSubmit={handleTx} className="p-6 space-y-4">
           <div className="grid grid-cols-3 gap-2">
             {([
-              { type: 'CASH_IN' as CashMovementType, label: 'Cash In', color: 'green' },
+              { type: 'FLOAT' as CashMovementType, label: 'Cash In', color: 'green' },
               { type: 'PAYOUT' as CashMovementType, label: 'Payout', color: 'red' },
               { type: 'BANKING' as CashMovementType, label: 'To Bank', color: 'blue' },
             ]).map(opt => (

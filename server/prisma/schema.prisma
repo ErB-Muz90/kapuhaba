@@ -49,6 +49,7 @@ model Sale {
   tax           Float
   total         Float
   paymentMethod String
+  shiftId       String?
   customerId    String?
   customerName  String?
   cashierId     String
@@ -200,24 +201,28 @@ model Shift {
   staffName     String
   terminalId    String
   startingFloat Float    @default(0)
-  status        String   @default("active")
+  status        String   @default("ACTIVE")
   startedAt     DateTime @default(now())
   endedAt       DateTime?
   expectedCash  Float?
   actualCash    Float?
   variance      Float?
+  retainedFloat Float?
+  toBank        Float?
   notes         String?
 }
 
 model CashDrawerTransaction {
   id            String   @id @default(uuid())
   shiftId       String
-  type          String   // OPENING_FLOAT | SALE_CASH | CASH_IN | EXPENSE | PAYOUT | BANKING
+  type          String   // SALE | EXPENSE | PAYOUT | FLOAT | BANKING
+  method        String   @default("CASH") // CASH | MPESA | CARD
   direction     String   // IN | OUT
   amount        Float
   notes         String?
   referenceId   String?
   referenceType String?
+  anomaly       Boolean  @default(false)
   createdAt     DateTime @default(now())
 }
 

@@ -51,9 +51,9 @@ export function ZReport() {
   const salesBreakdown = useMemo(() => ({
     count: dailySales.length,
     total: dailySales.reduce((s, x) => s + x.total, 0),
-    cash: dailySales.filter(s => s.paymentMethod === 'cash').reduce((sum, x) => sum + x.total, 0),
-    mpesa: dailySales.filter(s => s.paymentMethod === 'mpesa').reduce((sum, x) => sum + x.total, 0),
-    card: dailySales.filter(s => s.paymentMethod === 'card').reduce((sum, x) => sum + x.total, 0),
+    cash: dailySales.reduce((sum, s) => sum + (s.payments ?? []).filter(p => p.method === 'CASH').reduce((a, p) => a + p.amount, 0), 0),
+    mpesa: dailySales.reduce((sum, s) => sum + (s.payments ?? []).filter(p => p.method === 'MPESA').reduce((a, p) => a + p.amount, 0), 0),
+    card: dailySales.reduce((sum, s) => sum + (s.payments ?? []).filter(p => p.method === 'CARD').reduce((a, p) => a + p.amount, 0), 0),
   }), [dailySales]);
 
   // Per-shift summaries
@@ -163,22 +163,26 @@ export function ZReport() {
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <Banknote className="w-4 h-4 text-green-600" /> Cash Drawer Summary (Physical Cash Only)
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="p-4 bg-gray-50 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase">Opening Float</p>
                   <p className="text-2xl font-extrabold text-gray-900">{$c(grand.openingFloat)}</p>
                 </div>
                 <div className="p-4 bg-green-50 rounded-xl">
-                  <p className="text-xs text-green-600 uppercase flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Cash In</p>
-                  <p className="text-2xl font-extrabold text-green-800">{$c(grand.cashPaidIn)}</p>
+                  <p className="text-xs text-green-600 uppercase flex items-center gap-1"><Banknote className="w-3 h-3" /> Cash Sales</p>
+                  <p className="text-2xl font-extrabold text-green-800">+{$c(grand.cashSales)}</p>
+                </div>
+                <div className="p-4 bg-emerald-50 rounded-xl">
+                  <p className="text-xs text-emerald-600 uppercase flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Other Cash In</p>
+                  <p className="text-2xl font-extrabold text-emerald-800">+{$c(grand.cashPaidIn)}</p>
                 </div>
                 <div className="p-4 bg-red-50 rounded-xl">
                   <p className="text-xs text-red-600 uppercase flex items-center gap-1"><TrendingDown className="w-3 h-3" /> Cash Out</p>
-                  <p className="text-2xl font-extrabold text-red-800">{$c(grand.cashPaidOut)}</p>
+                  <p className="text-2xl font-extrabold text-red-800">-{$c(grand.cashPaidOut)}</p>
                 </div>
                 <div className="p-4 bg-orange-50 rounded-xl">
                   <p className="text-xs text-orange-600 uppercase flex items-center gap-1"><Building2 className="w-3 h-3" /> Banked</p>
-                  <p className="text-2xl font-extrabold text-orange-800">{$c(grand.cashBanked)}</p>
+                  <p className="text-2xl font-extrabold text-orange-800">-{$c(grand.cashBanked)}</p>
                 </div>
               </div>
 
@@ -238,7 +242,7 @@ export function ZReport() {
                           {shift.endedAt ? ` – ${safeFormat(shift.endedAt, 'HH:mm')}` : ''}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${shift.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                          <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${['ACTIVE', 'SUSPENDED', 'CLOSING', 'active'].includes(shift.status) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                             {shift.status}
                           </span>
                         </td>
