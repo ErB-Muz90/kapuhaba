@@ -13,6 +13,7 @@ import purchaseOrderRoutes from '../server/src/routes/purchaseOrders.js';
 import stockRoutes from '../server/src/routes/stock.js';
 import accountsPayableRoutes from '../server/src/routes/accountsPayable.js';
 import loyaltyRoutes from '../server/src/routes/loyalty.js';
+import resetRoutes from '../server/src/routes/reset.js';
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/accounts-payable', accountsPayableRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
+app.use('/api/reset', resetRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
