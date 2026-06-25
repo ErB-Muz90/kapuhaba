@@ -292,3 +292,41 @@ model BusinessSettings {
   loyaltyRedemptionRate   Float  @default(1)
   defaultFloat            Float  @default(0)
 }
+
+model Return {
+  id            String   @id @default(uuid())
+  saleId        String?
+  saleNumber    String?
+  customerId    String?
+  customerName  String?
+  items         Json
+  subtotal      Float
+  tax           Float
+  total         Float
+  refundMethod  String?
+  cashierId     String
+  cashierName   String
+  status        String   @default("pending")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Layaway {
+  id           String   @id @default(uuid())
+  customerId   String?
+  customerName String?
+  items        Json
+  totalAmount  Float
+  depositAmount Float  @default(0)
+  paidAmount   Float   @default(0)
+  balanceDue   Float
+  dueDate      DateTime?
+  payments     Json
+  status       String   @default("active")
+  cashierId    String
+  cashierName  String
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

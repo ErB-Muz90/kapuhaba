@@ -11,6 +11,7 @@ export type PermissionKey =
   | 'core.settings'
   // POS Actions
   | 'pos.returns'
+  | 'pos.layaway'
   | 'pos.expenditures'
   | 'pos.orders'
   | 'pos.held_receipts'
@@ -50,7 +51,7 @@ export const ROLE_PERMISSIONS: PermissionMap = {
     // Core — full access
     'core.dashboard', 'core.pos', 'core.settings',
     // POS
-    'pos.returns', 'pos.expenditures', 'pos.orders',
+    'pos.returns', 'pos.layaway', 'pos.expenditures', 'pos.orders',
     'pos.held_receipts', 'pos.open_drawer',
     // Inventory
     'inventory.view', 'inventory.edit', 'inventory.delete',
@@ -84,7 +85,7 @@ export const ROLE_PERMISSIONS: PermissionMap = {
     // Core
     'core.dashboard', 'core.pos',
     // POS
-    'pos.returns', 'pos.expenditures', 'pos.orders',
+    'pos.returns', 'pos.layaway', 'pos.expenditures', 'pos.orders',
     'pos.held_receipts', 'pos.open_drawer',
     // Inventory
     'inventory.view', 'inventory.edit',
@@ -190,6 +191,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     group: 'Point of Sale Actions',
     permissions: [
       { key: 'pos.returns', label: 'Process Returns' },
+      { key: 'pos.layaway', label: 'Manage Layaways' },
       { key: 'pos.expenditures', label: 'Manage Expenditures' },
       { key: 'pos.orders', label: 'Manage Sales Orders' },
       { key: 'pos.held_receipts', label: 'View Held Receipts' },

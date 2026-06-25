@@ -34,6 +34,8 @@ import { Loyalty } from './pages/Loyalty';
 import { ShiftManagement } from './pages/ShiftManagement';
 import { Expenses } from './pages/Expenses';
 import { ZReport } from './pages/ZReport';
+import { Returns } from './pages/Returns';
+import { Layaways } from './pages/Layaways';
 
 function PrivateRoute({ children, permission }: { children: React.ReactNode; permission?: PermissionKey }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -274,6 +276,22 @@ export default function App() {
           element={
             <PrivateRoute permission="reports.z_report">
               <ZReport />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/returns"
+          element={
+            <PrivateRoute permission="inventory.view">
+              <Returns />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/layaways"
+          element={
+            <PrivateRoute permission="inventory.view">
+              <Layaways />
             </PrivateRoute>
           }
         />

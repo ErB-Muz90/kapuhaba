@@ -14,6 +14,8 @@ import stockRoutes from '../server/src/routes/stock.js';
 import accountsPayableRoutes from '../server/src/routes/accountsPayable.js';
 import loyaltyRoutes from '../server/src/routes/loyalty.js';
 import resetRoutes from '../server/src/routes/reset.js';
+import returnRoutes from '../server/src/routes/returns.js';
+import layawayRoutes from '../server/src/routes/layaways.js';
 
 const app = express();
 
@@ -34,6 +36,8 @@ app.use('/api/stock', stockRoutes);
 app.use('/api/accounts-payable', accountsPayableRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
 app.use('/api/reset', resetRoutes);
+app.use('/api/returns', returnRoutes);
+app.use('/api/layaways', layawayRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

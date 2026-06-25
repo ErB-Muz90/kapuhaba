@@ -474,3 +474,74 @@ export interface LoyaltyTier {
   multiplier: number; // e.g., 1.5x points for gold
   benefits: string[];
 }
+
+// Return Types
+export type ReturnStatus = 'pending' | 'approved' | 'completed' | 'rejected';
+export type RefundMethod = 'cash' | 'mpesa' | 'card' | 'store_credit';
+
+export interface ReturnItem {
+  productId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  reason: string;
+  condition: 'good' | 'damaged' | 'defective';
+}
+
+export interface Return {
+  id: string;
+  saleId?: string;
+  saleNumber?: string;
+  customerId?: string;
+  customerName?: string;
+  items: ReturnItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  refundMethod?: RefundMethod;
+  cashierId: string;
+  cashierName: string;
+  status: ReturnStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Layaway Types
+export type LayawayStatus = 'active' | 'completed' | 'cancelled' | 'defaulted';
+
+export interface LayawayItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface LayawayPayment {
+  amount: number;
+  method: 'cash' | 'mpesa' | 'card';
+  date: string;
+  reference?: string;
+}
+
+export interface Layaway {
+  id: string;
+  customerId?: string;
+  customerName?: string;
+  items: LayawayItem[];
+  totalAmount: number;
+  depositAmount: number;
+  paidAmount: number;
+  balanceDue: number;
+  dueDate?: string;
+  payments: LayawayPayment[];
+  status: LayawayStatus;
+  cashierId: string;
+  cashierName: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}

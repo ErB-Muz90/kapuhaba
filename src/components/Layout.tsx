@@ -23,6 +23,7 @@ import {
   Gift,
   Clock,
   DollarSign,
+  RotateCcw,
 } from 'lucide-react';
 import { useProductStore } from '../store/productStore';
 
@@ -47,6 +48,8 @@ const navItems: NavItem[] = [
   { path: '/loyalty', label: 'Loyalty Program', icon: Gift, permission: 'customers.view' },
   { path: '/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers.view' },
   { path: '/purchase-orders', label: 'Purchase Orders', icon: FileText, permission: 'purchase_orders.view' },
+  { path: '/returns', label: 'Returns', icon: RotateCcw, permission: 'inventory.view' },
+  { path: '/layaways', label: 'Layaways', icon: Package, permission: 'inventory.view' },
   { path: '/accounts-payable', label: 'Accounts Payable', icon: CreditCard, permission: 'accounts_payable.view' },
   { path: '/staff', label: 'Staff', icon: UserCog, permission: 'staff.view' },
   { path: '/shifts', label: 'Shift Management', icon: Clock, permission: 'shifts.view' },
