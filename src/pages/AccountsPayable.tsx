@@ -31,6 +31,7 @@ export function AccountsPayable() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [selectedPayable, setSelectedPayable] = useState<AccountPayable | null>(null);
   const [formData, setFormData] = useState({
     supplierId: '',
@@ -47,8 +48,12 @@ export function AccountsPayable() {
 
   const { 
     payables, 
+    payments,
+    fetch: fetchPayables,
+    fetchPayments,
     createPayable, 
     recordPayment, 
+    getPayablePayments,
     getOverduePayables, 
     getTotalOutstanding, 
     getTotalOverdue,
@@ -59,10 +64,16 @@ export function AccountsPayable() {
   const { user } = useAuthStore();
   const canManageAP = hasPermission(user?.role, 'accounts_payable.manage');
 
+  // Fetch data on mount
+  useEffect(() => {
+    fetchPayables();
+    fetchPayments();
+  }, [fetchPayables, fetchPayments]);
+
   // Update overdue statuses on mount
   useEffect(() => {
     updateOverdueStatuses();
-  }, []);
+  }, [payables, updateOverdueStatuses]);
 
   const filteredPayables = useMemo(() => {
     let result = payables;
@@ -122,7 +133,7 @@ export function AccountsPayable() {
     });
   };
 
-  const handleRecordPayment = (e: React.FormEvent) => {
+  const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedPayable || paymentData.amount <= 0) {
@@ -135,18 +146,21 @@ export function AccountsPayable() {
       return;
     }
 
-    recordPayment(
-      selectedPayable.id,
-      paymentData.amount,
-      paymentData.method,
-      paymentData.reference,
-      user?.username || 'Unknown'
-    );
-
-    toast.success('Payment recorded successfully');
-    setPaymentModalOpen(false);
-    setSelectedPayable(null);
-    setPaymentData({ amount: 0, method: 'bank_transfer', reference: '' });
+    try {
+      await recordPayment(
+        selectedPayable.id,
+        paymentData.amount,
+        paymentData.method,
+        paymentData.reference,
+        user?.username || 'Unknown'
+      );
+      toast.success('Payment recorded successfully');
+      setPaymentModalOpen(false);
+      setSelectedPayable(null);
+      setPaymentData({ amount: 0, method: 'bank_transfer', reference: '' });
+    } catch (err: any) {
+      toast.error(err?.message || 'Payment failed');
+    }
   };
 
   const openPaymentModal = (payable: AccountPayable) => {
@@ -351,6 +365,17 @@ export function AccountsPayable() {
                               Pay
                             </Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setSelectedPayable(payable);
+                              setHistoryModalOpen(true);
+                            }}
+                          >
+                            <FileText className="w-4 h-4" />
+                            History
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -502,6 +527,61 @@ export function AccountsPayable() {
               </Button>
             </div>
           </form>
+        )}
+      </Modal>
+
+      {/* Payment History Modal */}
+      <Modal
+        isOpen={historyModalOpen}
+        onClose={() => {
+          setHistoryModalOpen(false);
+          setSelectedPayable(null);
+        }}
+        title={`Payment History: ${selectedPayable?.invoiceNumber}`}
+        size="md"
+      >
+        {selectedPayable && (
+          <div className="p-6 space-y-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-600">Supplier:</span>
+                <span className="font-medium">{selectedPayable.supplierName}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-600">Invoice Amount:</span>
+                <span className="font-medium">{$c(selectedPayable.amount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Outstanding Balance:</span>
+                <span className={`font-bold ${selectedPayable.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {$c(selectedPayable.balance)}
+                </span>
+              </div>
+            </div>
+
+            {getPayablePayments(selectedPayable.id).length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No payments recorded yet</div>
+            ) : (
+              <div className="space-y-3">
+                {getPayablePayments(selectedPayable.id).map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{$c(payment.amount)}</p>
+                      <p className="text-xs text-gray-500">
+                        {format(new Date(payment.paidAt), 'MMM d, yyyy HH:mm')} — {payment.paymentMethod}
+                        {payment.reference ? ` (${payment.reference})` : ''}
+                      </p>
+                    </div>
+                    <span className="text-xs text-gray-500">by {payment.paidBy}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Button variant="secondary" onClick={() => { setHistoryModalOpen(false); setSelectedPayable(null); }} className="w-full">
+              Close
+            </Button>
+          </div>
         )}
       </Modal>
     </Layout>

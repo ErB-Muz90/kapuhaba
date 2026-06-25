@@ -80,7 +80,23 @@ export const usePurchaseOrderStore = create<POStore>()((set, get) => ({
     const isFullyReceived = updatedItems.every((item) => item.receivedQuantity >= item.quantity);
     const isPartiallyReceived = updatedItems.some((item) => item.receivedQuantity > 0 && item.receivedQuantity < item.quantity);
     const newStatus: POStatus = isFullyReceived ? 'received' : isPartiallyReceived ? 'partial' : po.status;
-    if (isFullyReceived) supplierStore.updateSupplierStats(po.supplierId, po.total);
+    if (isFullyReceived) {
+      supplierStore.updateSupplierStats(po.supplierId, po.total);
+      // Auto-create Account Payable
+      try {
+        await api.post('/accounts-payable', {
+          supplierId: po.supplierId,
+          supplierName: po.supplierName,
+          poId: po.id,
+          poNumber: po.poNumber,
+          invoiceNumber: 'INV-' + po.poNumber,
+          invoiceDate: new Date().toISOString().split('T')[0],
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          amount: po.total,
+          notes: `Auto-created from PO ${po.poNumber}`,
+        });
+      } catch {}
+    }
     await api.put(`/purchase-orders/${id}`, {
       items: updatedItems,
       status: newStatus,

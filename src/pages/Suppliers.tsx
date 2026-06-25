@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { Modal } from '../components/Modal';
 import { Button } from '../components/Button';
@@ -51,7 +51,9 @@ export function Suppliers() {
   const { user } = useAuthStore();
   const canManage = hasPermission(user?.role, 'suppliers.manage');
 
-  const { suppliers, addSupplier, updateSupplier, deleteSupplier, searchSuppliers } = useSupplierStore();
+  const { suppliers, fetch: fetchSuppliers, addSupplier, updateSupplier, deleteSupplier, searchSuppliers } = useSupplierStore();
+
+  useEffect(() => { fetchSuppliers(); }, [fetchSuppliers]);
 
   const filteredSuppliers = useMemo(() => {
     let result = searchQuery ? searchSuppliers(searchQuery) : suppliers;

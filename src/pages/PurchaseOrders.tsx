@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { Modal } from '../components/Modal';
 import { Button } from '../components/Button';
@@ -58,11 +58,13 @@ export function PurchaseOrders() {
   });
   const [receivingItems, setReceivingItems] = useState<{ productId: string; quantity: number }[]>([]);
 
-  const { purchaseOrders, createPO, updatePOStatus, receivePO, getPendingPOs } = usePurchaseOrderStore();
+  const { purchaseOrders, fetch: fetchPOs, createPO, updatePOStatus, receivePO, getPendingPOs } = usePurchaseOrderStore();
   const { suppliers, getSupplier } = useSupplierStore();
   const { products } = useProductStore();
   const { user } = useAuthStore();
   const canManagePO = hasPermission(user?.role, 'purchase_orders.manage');
+
+  useEffect(() => { fetchPOs(); }, [fetchPOs]);
 
   const filteredPOs = useMemo(() => {
     let result = purchaseOrders;

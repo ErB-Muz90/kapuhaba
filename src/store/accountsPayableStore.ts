@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
+import { useShiftStore } from './shiftStore';
 import type { AccountPayable, PayablePayment, PayableStatus } from '../types';
 import { addDays, isAfter, parseISO } from 'date-fns';
 
@@ -69,11 +70,36 @@ export const useAccountsPayableStore = create<AccountsPayableStore>()((set, get)
   getPayable: (id) => get().payables.find((p) => p.id === id),
 
   recordPayment: async (payableId, amount, method, reference, paidBy) => {
+    // Check cash drawer balance if paying with cash
+    if (method === 'cash') {
+      const shiftStore = useShiftStore.getState();
+      const shift = shiftStore.getActiveShift();
+      if (shift) {
+        const balance = shiftStore.getCashBalance(shift.id);
+        if (balance < amount) {
+          throw new Error(`Insufficient cash in drawer. Available: ${balance}, Needed: ${amount}`);
+        }
+      }
+    }
+
     const payment = await api.post<PayablePayment>('/accounts-payable/payments', {
       payableId, amount, paymentMethod: method, reference, paidBy,
     });
     set((state) => ({ payments: [...state.payments, payment] }));
+
+    // Create PAYOUT cash movement when paid with cash
+    if (method === 'cash') {
+      const shiftStore = useShiftStore.getState();
+      const shift = shiftStore.getActiveShift();
+      if (shift) {
+        const payable = get().payables.find((p) => p.id === payableId);
+        shiftStore.addCashMovement(shift.id, 'PAYOUT', 'OUT', amount, `Supplier payment: ${payable?.supplierName || ''} ${payable?.invoiceNumber || ''}`, payableId, 'payable');
+      }
+    }
+
+    // Refresh payables list
     get().fetch();
+    get().fetchPayments();
     return payment;
   },
 
