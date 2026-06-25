@@ -76,51 +76,58 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const { payments, shiftId, ...saleData } = req.body;
 
-  const sale = await prisma.sale.create({
-    data: {
-      ...saleData,
-      payments: {
-        create: (payments as Array<{ method: string; amount: number }>) ?? [],
-      },
-    },
-    include: { payments: true },
-  });
-
-  // Only CASH payments create a cash drawer movement
-  if (shiftId) {
-    const cashPayments = (payments as Array<{ method: string; amount: number }>) ?? [];
-    const totalCash = cashPayments
-      .filter(p => p.method === 'CASH')
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    if (totalCash > 0) {
-      await prisma.cashDrawerTransaction.create({
-        data: {
-          shiftId,
-          type: 'SALE_CASH',
-          direction: 'IN',
-          amount: totalCash,
-          referenceId: sale.id,
-          referenceType: 'sale',
-          notes: `Sale ${sale.id.slice(0, 8)} - CASH`,
+  const sale = await prisma.$transaction(async (tx) => {
+    const s = await tx.sale.create({
+      data: {
+        ...saleData,
+        payments: {
+          create: (payments as Array<{ method: string; amount: number }>) ?? [],
         },
+      },
+      include: { payments: true },
+    });
+
+    // Only CASH payments create a cash drawer movement
+    if (shiftId) {
+      const cashPayments = (payments as Array<{ method: string; amount: number }>) ?? [];
+      const totalCash = cashPayments
+        .filter(p => p.method === 'CASH')
+        .reduce((sum, p) => sum + p.amount, 0);
+
+      if (totalCash > 0) {
+        await tx.cashDrawerTransaction.create({
+          data: {
+            shiftId,
+            type: 'SALE_CASH',
+            direction: 'IN',
+            amount: totalCash,
+            referenceId: s.id,
+            referenceType: 'sale',
+            notes: `Sale ${s.id.slice(0, 8)} - CASH`,
+          },
+        });
+      }
+    }
+
+    // Deduct stock
+    for (const item of (saleData.items as Array<{ productId: string; quantity: number }>) ?? []) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stockQuantity: { decrement: item.quantity } },
       });
     }
-  }
 
-  for (const item of (saleData.items as Array<{ productId: string; quantity: number }>) ?? []) {
-    await prisma.product.update({
-      where: { id: item.productId },
-      data: { stockQuantity: { decrement: item.quantity } },
-    });
-  }
+    return s;
+  });
 
   res.json({ ...sale, items: sale.items ?? [], payments: sale.payments ?? [] });
 });
 
 router.delete('/:id', async (req, res) => {
-  await prisma.payment.deleteMany({ where: { saleId: req.params.id } });
-  await prisma.sale.delete({ where: { id: req.params.id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.payment.deleteMany({ where: { saleId: req.params.id } });
+    await tx.sale.delete({ where: { id: req.params.id } });
+  });
   res.json({ success: true });
 });
 

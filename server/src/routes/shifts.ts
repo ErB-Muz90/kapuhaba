@@ -17,33 +17,43 @@ router.get('/active', async (_req, res) => {
 
 router.post('/', async (req, res) => {
   const { float, staffId, staffName, terminalId } = req.body;
-  const shift = await prisma.shift.create({
-    data: {
-      staffId,
-      staffName,
-      terminalId,
-      startingFloat: float ?? 0,
-      status: 'active',
-    },
+
+  const result = await prisma.$transaction(async (tx) => {
+    const shift = await tx.shift.create({
+      data: {
+        staffId,
+        staffName,
+        terminalId,
+        startingFloat: float ?? 0,
+        status: 'active',
+      },
+    });
+
+    await tx.cashDrawerTransaction.create({
+      data: {
+        shiftId: shift.id,
+        type: 'OPENING_FLOAT',
+        direction: 'IN',
+        amount: float ?? 0,
+        referenceType: 'other',
+        notes: 'Opening float',
+      },
+    });
+
+    return shift;
   });
 
-  // Record opening float as a cash movement
-  await prisma.cashDrawerTransaction.create({
-    data: {
-      shiftId: shift.id,
-      type: 'OPENING_FLOAT',
-      direction: 'IN',
-      amount: float ?? 0,
-      referenceType: 'other',
-      notes: 'Opening float',
-    },
-  });
-
-  res.json(shift);
+  res.json(result);
 });
 
 router.put('/:id', async (req, res) => {
-  const data = await prisma.shift.update({ where: { id: req.params.id }, data: req.body });
+  const existing = await prisma.shift.findUnique({ where: { id: req.params.id } });
+  if (!existing) { res.status(404).json({ error: 'Shift not found' }); return; }
+  if (existing.status === 'closed') { res.status(400).json({ error: 'Cannot modify closed shift' }); return; }
+
+  // Prevent closing via PUT — use POST /:id/close instead
+  const { status, endedAt, actualCash, ...safe } = req.body;
+  const data = await prisma.shift.update({ where: { id: req.params.id }, data: safe });
   res.json(data);
 });
 
@@ -101,7 +111,12 @@ router.post('/transactions', async (req, res) => {
     BANKING: 'OUT',
   };
 
-  if (validDirections[type] && validDirections[type] !== direction) {
+  if (!validDirections[type]) {
+    res.status(400).json({ error: `Unknown movement type: ${type}. Allowed: ${Object.keys(validDirections).join(', ')}` });
+    return;
+  }
+
+  if (validDirections[type] !== direction) {
     res.status(400).json({
       error: `Invalid direction for type ${type}. Expected ${validDirections[type]}, got ${direction}`,
     });
