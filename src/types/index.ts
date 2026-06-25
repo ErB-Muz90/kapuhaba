@@ -50,7 +50,6 @@ export interface CartItem {
 }
 
 // Sale Types
-export type PaymentMethod = 'cash' | 'mpesa' | 'card';
 
 export interface SaleItem {
   productId: string;
@@ -67,6 +66,7 @@ export interface Sale {
   tax: number;
   total: number;
   paymentMethod: PaymentMethod;
+  payments?: Payment[];
   customerId?: string;
   customerName?: string;
   cashierId: string;
@@ -108,10 +108,21 @@ export interface BusinessSettings {
   defaultFloat: number; // Default starting float for shifts
 }
 
+// Payment Types
+export type PaymentMethod = 'cash' | 'mpesa' | 'card';
+
+export interface Payment {
+  id: string;
+  saleId: string;
+  method: 'CASH' | 'MPESA' | 'CARD';
+  amount: number;
+  createdAt: string;
+}
+
 // Shift & Cash Drawer Types
 export type ShiftStatus = 'active' | 'closed' | 'cancelled';
-export type CashDrawerTransactionType = 'paid_in' | 'paid_out' | 'bank_deposit' | 'mpesa_deposit';
-export type CashDrawerTransactionMethod = 'cash' | 'mpesa' | 'bank';
+export type CashMovementType = 'OPENING_FLOAT' | 'SALE_CASH' | 'CASH_IN' | 'EXPENSE' | 'PAYOUT' | 'BANKING';
+export type CashDirection = 'IN' | 'OUT';
 
 export interface Shift {
   id: string;
@@ -119,20 +130,21 @@ export interface Shift {
   staffName: string;
   terminalId: string;
   startingFloat: number;
-  openingCash: number;
-  closingCash: number;
   status: ShiftStatus;
   startedAt: string;
   endedAt: string | null;
+  expectedCash?: number;
+  actualCash?: number;
+  variance?: number;
   notes?: string;
 }
 
-export interface CashDrawerTransaction {
+export interface CashMovement {
   id: string;
   shiftId: string;
-  type: CashDrawerTransactionType;
+  type: CashMovementType;
+  direction: CashDirection;
   amount: number;
-  method: CashDrawerTransactionMethod;
   notes?: string;
   referenceId?: string;
   referenceType?: 'sale' | 'payable' | 'expense' | 'other';

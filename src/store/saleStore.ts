@@ -41,7 +41,7 @@ export const useSaleStore = create<SaleStore>()((set, get) => ({
     set({ loading: true });
     try {
       const sales = await api.get<Sale[]>('/sales');
-      set({ sales: sales.map(s => ({ ...s, items: s.items ?? [] })), loading: false });
+      set({ sales: sales.map(s => ({ ...s, items: s.items ?? [], payments: s.payments ?? [] })), loading: false });
     } catch { set({ loading: false }); }
   },
 
@@ -104,26 +104,25 @@ export const useSaleStore = create<SaleStore>()((set, get) => ({
       total: item.product.sellingPrice * item.quantity,
     }));
 
+    const activeShift = useShiftStore.getState().getActiveShift();
+
     try {
       const sale = await api.post<Sale>('/sales', {
         items: saleItems,
         subtotal, tax, total,
         paymentMethod,
+        payments: [{ method: paymentMethod.toUpperCase(), amount: total }],
+        shiftId: activeShift?.id,
         customerId: selectedCustomerId || undefined,
         customerName: customerName || undefined,
         cashierId, cashierName,
         createdAt: new Date().toISOString(),
       });
 
-      set((state) => ({ sales: [...state.sales, { ...sale, items: sale.items ?? [] }] }));
+      set((state) => ({ sales: [...state.sales, { ...sale, items: sale.items ?? [], payments: sale.payments ?? [] }] }));
       clearCart();
 
-      const activeShift = useShiftStore.getState().getActiveShift();
-      if (activeShift) {
-        useShiftStore.getState().linkSaleToCashDrawer(activeShift.id, sale.id, total, paymentMethod);
-      }
-
-      return { ...sale, items: sale.items ?? [] };
+      return { ...sale, items: sale.items ?? [], payments: sale.payments ?? [] };
     } catch {
       return null;
     }
@@ -142,28 +141,30 @@ export const useSaleStore = create<SaleStore>()((set, get) => ({
     const totalRevenue = dailySales.reduce((sum, sale) => sum + sale.total, 0);
     const totalProfit = dailySales.reduce((sum, sale) => {
       let profit = 0;
-      for (const item of sale.items) {
+      for (const item of (sale.items ?? [])) {
         const product = useProductStore.getState().getProduct(item.productId);
         if (product) profit += (item.unitPrice - product.buyingPrice) * item.quantity;
       }
       return sum + profit;
     }, 0);
-    const paymentBreakdown = {
-      cash: dailySales.filter((s) => s.paymentMethod === 'cash').reduce((sum, s) => sum + s.total, 0),
-      mpesa: dailySales.filter((s) => s.paymentMethod === 'mpesa').reduce((sum, s) => sum + s.total, 0),
-      card: dailySales.filter((s) => s.paymentMethod === 'card').reduce((sum, s) => sum + s.total, 0),
-    };
+    const paymentBreakdown = { cash: 0, mpesa: 0, card: 0 };
+    for (const s of dailySales) {
+      for (const p of (s.payments ?? [])) {
+        const key = p.method.toLowerCase() as keyof typeof paymentBreakdown;
+        if (key in paymentBreakdown) paymentBreakdown[key] += p.amount;
+      }
+    }
     return { date: format(date, 'yyyy-MM-dd'), totalSales: dailySales.length, totalRevenue, totalProfit, paymentBreakdown };
   },
 
   getTopProducts: (days, limit) => {
     const startDate = subDays(new Date(), days);
     const sales = get().sales.filter((s) => new Date(s.createdAt) >= startDate);
-    const stats: Record<string, { name: string; quantity: number; revenue: number }> = {};
+    const stats: Record<string, { productName: string; quantitySold: number; revenue: number }> = {};
     for (const sale of sales) {
-      for (const item of sale.items) {
-        if (!stats[item.productId]) stats[item.productId] = { name: item.productName, quantity: 0, revenue: 0 };
-        stats[item.productId].quantity += item.quantity;
+      for (const item of (sale.items ?? [])) {
+        if (!stats[item.productId]) stats[item.productId] = { productName: item.productName, quantitySold: 0, revenue: 0 };
+        stats[item.productId].quantitySold += item.quantity;
         stats[item.productId].revenue += item.total;
       }
     }

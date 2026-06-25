@@ -10,24 +10,12 @@ import { useFormatCurrency } from '../utils/format';
 import { useAuthStore } from '../store/authStore';
 import { hasPermission } from '../permissions';
 import {
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  History,
-  Plus,
-  Building2,
-  Smartphone,
-  Banknote,
-  CreditCard,
-  Package,
-  Timer,
+  Clock, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, XCircle, History, Plus, Building2, Banknote, Smartphone, CreditCard, Timer,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { differenceInMinutes } from 'date-fns';
 import { safeFormat } from '../utils/format';
+import type { CashMovementType, CashDirection } from '../types';
 
 export function ShiftManagement() {
   const $c = useFormatCurrency();
@@ -35,18 +23,18 @@ export function ShiftManagement() {
   const [endModalOpen, setEndModalOpen] = useState(false);
   const [txModalOpen, setTxModalOpen] = useState(false);
   const [floatAmount, setFloatAmount] = useState(0);
-  const [closingCash, setClosingCash] = useState(0);
+  const [actualCash, setActualCash] = useState(0);
   const [txLogTab, setTxLogTab] = useState<'all' | 'cash' | 'digital'>('all');
   const [txForm, setTxForm] = useState({
-    type: 'paid_in' as 'paid_in' | 'paid_out' | 'bank_deposit',
+    type: 'CASH_IN' as CashMovementType,
     amount: 0,
     notes: '',
   });
   const [elapsed, setElapsed] = useState('');
 
   const {
-    startShift, endShift, getActiveShift, addCashDrawerTransaction,
-    getCashDrawerBalance, getCashDrawerHistory, getShiftSummary, createSession,
+    startShift, endShift, getActiveShift, addCashMovement,
+    getCashBalance, getCashMovements, getShiftSummary, createSession,
   } = useShiftStore();
   const sales = useSaleStore((s) => s.sales);
   const settings = useSettingsStore((s) => s.settings);
@@ -54,7 +42,7 @@ export function ShiftManagement() {
   const canManageShifts = hasPermission(user?.role, 'shifts.manage');
 
   const activeShift = getActiveShift();
-  const cashBalance = activeShift ? getCashDrawerBalance(activeShift.id) : 0;
+  const cashBalance = activeShift ? getCashBalance(activeShift.id) : 0;
   const summary = activeShift ? getShiftSummary(activeShift.id) : null;
 
   // Shift sales by payment method
@@ -74,14 +62,14 @@ export function ShiftManagement() {
     );
   }, [sales, activeShift]);
 
-  // Filtered transaction log
+  // Filtered movement log
   const txLog = useMemo(() => {
     if (!activeShift) return [];
-    const all = getCashDrawerHistory(activeShift.id);
-    if (txLogTab === 'cash') return all.filter(t => t.method === 'cash');
-    if (txLogTab === 'digital') return all.filter(t => t.method !== 'cash');
+    const all = getCashMovements(activeShift.id);
+    if (txLogTab === 'cash') return all.filter(m => m.direction === 'IN' || m.direction === 'OUT');
+    if (txLogTab === 'digital') return []; // digital payments aren't cash movements
     return all;
-  }, [activeShift, txLogTab, getCashDrawerHistory]);
+  }, [activeShift, txLogTab, getCashMovements]);
 
   // Timer
   useEffect(() => {
@@ -109,28 +97,28 @@ export function ShiftManagement() {
 
   const handleEndShift = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeShift || !summary) return;
-    endShift(activeShift.id, closingCash);
+    if (!activeShift) return;
+    endShift(activeShift.id, actualCash);
     toast.success('Shift closed');
     setEndModalOpen(false);
-    setClosingCash(0);
+    setActualCash(0);
   };
 
-  const handleTx = (e: React.FormEvent) => {
+  const handleTx = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeShift || txForm.amount <= 0) { toast.error('Enter valid amount'); return; }
-    const result = addCashDrawerTransaction(
-      activeShift.id, txForm.type, txForm.amount, 'cash',
-      txForm.notes || txForm.type.replace('_', ' '),
+    const direction: CashDirection = txForm.type === 'CASH_IN' ? 'IN' : 'OUT';
+    await addCashMovement(
+      activeShift.id, txForm.type, direction, txForm.amount,
+      txForm.notes || txForm.type.replace(/_/g, ' '),
       undefined, 'other'
     );
-    if (!result) { toast.error('Insufficient cash in drawer'); return; }
     toast.success('Transaction recorded');
     setTxModalOpen(false);
-    setTxForm({ type: 'paid_in', amount: 0, notes: '' });
+    setTxForm({ type: 'CASH_IN', amount: 0, notes: '' });
   };
 
-  const varianceAmount = summary ? closingCash - summary.expectedCash : 0;
+  const varianceAmount = summary ? actualCash - summary.expectedCash : 0;
 
   return (
     <Layout>
@@ -153,7 +141,7 @@ export function ShiftManagement() {
                 <Button variant="secondary" onClick={() => setTxModalOpen(true)}>
                   <Plus className="w-4 h-4" /> Cash In / Out
                 </Button>
-                <Button variant="danger" onClick={() => { setClosingCash(0); setEndModalOpen(true); }}>
+                <Button variant="danger" onClick={() => { setActualCash(0); setEndModalOpen(true); }}>
                   <XCircle className="w-4 h-4" /> End Shift
                 </Button>
               </div>
@@ -217,7 +205,7 @@ export function ShiftManagement() {
               {/* 2a. SALES PANEL (ALL PAYMENT METHODS) */}
               <div className="bg-white rounded-2xl shadow-sm p-6">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Package className="w-4 h-4" /> Sales Summary
+                  <Banknote className="w-4 h-4" /> Sales Summary
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
@@ -281,7 +269,7 @@ export function ShiftManagement() {
                   </div>
                   <div className="flex justify-between py-1.5 text-green-600">
                     <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Other Cash In</span>
-                    <span className="font-semibold">+{$c(Math.max(0, summary.cashPaidIn - summary.cashSales))}</span>
+                    <span className="font-semibold">+{$c(Math.max(0, summary.cashPaidIn))}</span>
                   </div>
                   <div className="flex justify-between py-1.5 text-red-600">
                     <span className="flex items-center gap-1"><TrendingDown className="w-3 h-3" /> Cash Out / Expenses</span>
@@ -316,9 +304,9 @@ export function ShiftManagement() {
                   </div>
                   <div className="p-4 bg-gray-50 rounded-xl text-sm">
                     <p className="text-gray-500">M-Pesa collected (not in drawer)</p>
-                    <p className="font-bold text-gray-900">{$c(summary.mpesaTotal)}</p>
+                    <p className="font-bold text-gray-900">{$c(shiftSales.mpesa)}</p>
                     <p className="text-gray-500 mt-2">Card collected (not in drawer)</p>
-                    <p className="font-bold text-gray-900">{$c(summary.cardTotal)}</p>
+                    <p className="font-bold text-gray-900">{$c(shiftSales.card)}</p>
                   </div>
                 </div>
               </div>
@@ -343,7 +331,7 @@ export function ShiftManagement() {
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
                       <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Type</th>
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Method</th>
+                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Direction</th>
                       <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Amount</th>
                       <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Reference</th>
                       <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Time</th>
@@ -352,26 +340,26 @@ export function ShiftManagement() {
                   <tbody className="divide-y">
                     {txLog.length === 0 ? (
                       <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400">No transactions yet</td></tr>
-                    ) : txLog.map(tx => {
-                      const isIn = tx.type === 'paid_in' || tx.type === 'mpesa_deposit';
+                    ) : txLog.map(m => {
+                      const isIn = m.direction === 'IN';
                       return (
-                        <tr key={tx.id} className="hover:bg-gray-50">
+                        <tr key={m.id} className="hover:bg-gray-50">
                           <td className="px-6 py-3">
                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full ${isIn ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                               {isIn ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                              {tx.type.replace(/_/g, ' ')}
+                              {m.type.replace(/_/g, ' ')}
                             </span>
                           </td>
                           <td className="px-6 py-3">
-                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${tx.method === 'cash' ? 'bg-green-50 text-green-700' : tx.method === 'mpesa' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
-                              {tx.method}
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${isIn ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                              {m.direction}
                             </span>
                           </td>
                           <td className={`px-6 py-3 text-right font-semibold ${isIn ? 'text-green-600' : 'text-red-600'}`}>
-                            {isIn ? '+' : '-'}{$c(tx.amount)}
+                            {isIn ? '+' : '-'}{$c(m.amount)}
                           </td>
-                          <td className="px-6 py-3 text-sm text-gray-500 truncate max-w-[200px]">{tx.notes || '-'}</td>
-                          <td className="px-6 py-3 text-sm text-gray-500">{safeFormat(tx.createdAt, 'HH:mm:ss')}</td>
+                          <td className="px-6 py-3 text-sm text-gray-500 truncate max-w-[200px]">{m.notes || '-'}</td>
+                          <td className="px-6 py-3 text-sm text-gray-500">{safeFormat(m.createdAt, 'HH:mm:ss')}</td>
                         </tr>
                       );
                     })}
@@ -424,15 +412,15 @@ export function ShiftManagement() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Count the physical cash and enter total below
               </label>
-              <input type="number" value={closingCash}
-                onChange={(e) => setClosingCash(parseFloat(e.target.value) || 0)}
+              <input type="number" value={actualCash}
+                onChange={(e) => setActualCash(parseFloat(e.target.value) || 0)}
                 placeholder="0.00" min="0" step="0.01" required
                 className="w-full px-4 py-3 text-2xl font-bold text-center border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
             {/* Variance */}
-            {(closingCash > 0 || summary?.expectedCash === 0) && (
+            {(actualCash > 0 || summary?.expectedCash === 0) && (
               <div className={`p-4 rounded-xl flex items-center gap-3 ${
                 varianceAmount === 0 ? 'bg-green-50 border border-green-200' :
                 Math.abs(varianceAmount) <= 100 ? 'bg-yellow-50 border border-yellow-200' :
@@ -464,7 +452,7 @@ export function ShiftManagement() {
 
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="secondary" onClick={() => setEndModalOpen(false)} className="flex-1">Cancel</Button>
-              <Button type="submit" variant="danger" className="flex-1" disabled={closingCash < 0}>
+              <Button type="submit" variant="danger" className="flex-1" disabled={actualCash < 0}>
                 <XCircle className="w-4 h-4" /> Close Shift
               </Button>
             </div>
@@ -477,9 +465,9 @@ export function ShiftManagement() {
         <form onSubmit={handleTx} className="p-6 space-y-4">
           <div className="grid grid-cols-3 gap-2">
             {([
-              { type: 'paid_in' as const, label: 'Cash In', color: 'green' },
-              { type: 'paid_out' as const, label: 'Cash Out', color: 'red' },
-              { type: 'bank_deposit' as const, label: 'To Bank', color: 'blue' },
+              { type: 'CASH_IN' as CashMovementType, label: 'Cash In', color: 'green' },
+              { type: 'PAYOUT' as CashMovementType, label: 'Payout', color: 'red' },
+              { type: 'BANKING' as CashMovementType, label: 'To Bank', color: 'blue' },
             ]).map(opt => (
               <button key={opt.type} type="button" onClick={() => setTxForm({ ...txForm, type: opt.type })}
                 className={`p-3 rounded-xl border-2 text-center text-sm font-semibold transition-colors ${
@@ -501,7 +489,7 @@ export function ShiftManagement() {
             placeholder="0.00" min="0.01" step="0.01" required
           />
 
-          {(txForm.type === 'paid_out' || txForm.type === 'bank_deposit') && (
+          {(txForm.type === 'PAYOUT' || txForm.type === 'BANKING') && (
             <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
               Available cash: <strong>{$c(cashBalance)}</strong>
             </div>

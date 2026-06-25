@@ -1,39 +1,45 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
-import type { Shift, CashDrawerTransaction, TerminalSession } from '../types';
+import type { Shift, CashMovement, TerminalSession, CashMovementType, CashDirection } from '../types';
 
 interface ShiftStore {
   shifts: Shift[];
-  cashDrawerTransactions: CashDrawerTransaction[];
+  cashMovements: CashMovement[];
   terminalSessions: TerminalSession[];
   activeShiftId: string | null;
   loading: boolean;
   fetch: () => Promise<void>;
-  fetchTransactions: () => Promise<void>;
+  fetchMovements: () => Promise<void>;
   fetchSessions: () => Promise<void>;
   startShift: (staffId: string, staffName: string, terminalId: string, startingFloat: number) => Promise<Shift>;
-  endShift: (shiftId: string, closingCash: number, notes?: string) => Promise<{ success: boolean; variance: number }>;
+  endShift: (shiftId: string, actualCash: number, notes?: string) => Promise<{ success: boolean; variance: number }>;
   getActiveShift: () => Shift | undefined;
   getShiftHistory: (staffId?: string) => Shift[];
-  addCashDrawerTransaction: (shiftId: string, type: 'paid_in' | 'paid_out' | 'bank_deposit' | 'mpesa_deposit', amount: number, method: 'cash' | 'mpesa' | 'bank', notes?: string, referenceId?: string, referenceType?: 'sale' | 'payable' | 'expense' | 'other') => Promise<CashDrawerTransaction | null>;
-  getCashDrawerBalance: (shiftId: string) => number;
-  getCashDrawerHistory: (shiftId: string) => CashDrawerTransaction[];
-  linkSaleToCashDrawer: (shiftId: string, saleId: string, amount: number, paymentMethod: 'cash' | 'mpesa' | 'card') => void;
+  addCashMovement: (shiftId: string, type: CashMovementType, direction: CashDirection, amount: number, notes?: string, referenceId?: string, referenceType?: 'sale' | 'payable' | 'expense' | 'other') => Promise<CashMovement | null>;
+  getCashBalance: (shiftId: string) => number;
+  getCashMovements: (shiftId: string) => CashMovement[];
   createSession: (staffId: string, staffName: string, terminalId: string) => Promise<TerminalSession>;
   endSession: (sessionId: string) => Promise<void>;
   getActiveSession: (terminalId: string) => TerminalSession | undefined;
   getShiftSummary: (shiftId: string) => {
-    openingFloat: number; totalSales: number; cashSales: number; mpesaSales: number; cardSales: number;
-    cashPaidIn: number; cashPaidOut: number; cashBanked: number;
-    totalPaidIn: number; totalPaidOut: number; totalDeposits: number;
-    expectedCash: number; actualCash: number; variance: number;
-    retainedFloat: number; toBank: number; mpesaTotal: number; cardTotal: number;
+    openingFloat: number;
+    cashSales: number;
+    cashPaidIn: number;
+    cashPaidOut: number;
+    cashBanked: number;
+    totalPaidIn: number;
+    totalPaidOut: number;
+    expectedCash: number;
+    actualCash: number;
+    variance: number;
+    retainedFloat: number;
+    toBank: number;
   };
 }
 
 export const useShiftStore = create<ShiftStore>()((set, get) => ({
   shifts: [],
-  cashDrawerTransactions: [],
+  cashMovements: [],
   terminalSessions: [],
   activeShiftId: null,
   loading: false,
@@ -47,10 +53,10 @@ export const useShiftStore = create<ShiftStore>()((set, get) => ({
     } catch { set({ loading: false }); }
   },
 
-  fetchTransactions: async () => {
+  fetchMovements: async () => {
     try {
-      const transactions = await api.get<CashDrawerTransaction[]>('/shifts/transactions');
-      set({ cashDrawerTransactions: transactions });
+      const movements = await api.get<CashMovement[]>('/shifts/transactions');
+      set({ cashMovements: movements });
     } catch {}
   },
 
@@ -68,26 +74,18 @@ export const useShiftStore = create<ShiftStore>()((set, get) => ({
       return existing;
     }
     const shift = await api.post<Shift>('/shifts', {
-      staffId, staffName, terminalId, startingFloat,
-      openingCash: startingFloat, closingCash: 0, status: 'active',
-      startedAt: new Date().toISOString(), endedAt: null,
+      float: startingFloat,
+      staffId, staffName, terminalId,
     });
     set((state) => ({ shifts: [shift, ...state.shifts], activeShiftId: shift.id }));
     return shift;
   },
 
-  endShift: async (shiftId, closingCash, notes) => {
-    const summary = get().getShiftSummary(shiftId);
-    await api.put(`/shifts/${shiftId}`, {
-      closingCash, status: 'closed', endedAt: new Date().toISOString(), notes,
-    });
-    set((state) => ({
-      shifts: state.shifts.map((s) =>
-        s.id === shiftId ? { ...s, closingCash, status: 'closed' as const, endedAt: new Date().toISOString(), notes } : s
-      ),
-      activeShiftId: null,
-    }));
-    return { success: true, variance: summary.variance };
+  endShift: async (shiftId, actualCash) => {
+    const result = await api.post<{ expectedCash: number; actualCash: number; variance: number }>(`/shifts/${shiftId}/close`, { actualCash });
+    // Refresh shifts from server to get updated values
+    await get().fetch();
+    return { success: true, variance: result.variance };
   },
 
   getActiveShift: () => {
@@ -100,36 +98,32 @@ export const useShiftStore = create<ShiftStore>()((set, get) => ({
     return staffId ? shifts.filter((s) => s.staffId === staffId) : shifts;
   },
 
-  addCashDrawerTransaction: async (shiftId, type, amount, method, notes, referenceId, referenceType) => {
+  addCashMovement: async (shiftId, type, direction, amount, notes, referenceId, referenceType) => {
     try {
-      const tx = await api.post<CashDrawerTransaction>('/shifts/transactions', {
-        shiftId, type, amount, method, notes, referenceId, referenceType, createdAt: new Date().toISOString(),
+      const movement = await api.post<CashMovement>('/shifts/transactions', {
+        shiftId, type, direction, amount, notes, referenceId, referenceType,
       });
-      set((state) => ({ cashDrawerTransactions: [...state.cashDrawerTransactions, tx] }));
-      return tx;
+      set((state) => ({ cashMovements: [...state.cashMovements, movement] }));
+      return movement;
     } catch { return null; }
   },
 
-  getCashDrawerBalance: (shiftId) => {
-    const transactions = get().getCashDrawerHistory(shiftId).filter((t) => t.method === 'cash');
+  getCashBalance: (shiftId) => {
+    const movements = get().getCashMovements(shiftId);
     const shift = get().shifts.find((s) => s.id === shiftId);
     if (!shift) return 0;
-    let balance = shift.startingFloat;
-    transactions.forEach((t) => {
-      if (t.type === 'paid_in') balance += t.amount;
-      else if (t.type === 'paid_out' || t.type === 'bank_deposit') balance -= t.amount;
-    });
+    let balance = 0;
+    for (const m of movements) {
+      if (m.direction === 'IN') balance += m.amount;
+      if (m.direction === 'OUT') balance -= m.amount;
+    }
     return Math.max(0, Number(balance.toFixed(2)));
   },
 
-  getCashDrawerHistory: (shiftId) =>
-    get().cashDrawerTransactions.filter((t) => t.shiftId === shiftId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-
-  linkSaleToCashDrawer: (shiftId, saleId, amount, paymentMethod) => {
-    const method = paymentMethod === 'cash' ? 'cash' : paymentMethod === 'mpesa' ? 'mpesa' : 'bank';
-    const type = paymentMethod === 'cash' ? 'paid_in' : paymentMethod === 'mpesa' ? 'mpesa_deposit' : 'paid_in';
-    get().addCashDrawerTransaction(shiftId, type as any, amount, method as any, `Sale ${(saleId ?? '').slice(0, 8)} - ${paymentMethod.toUpperCase()}`, saleId, 'sale');
-  },
+  getCashMovements: (shiftId) =>
+    get().cashMovements
+      .filter((m) => m.shiftId === shiftId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
 
   createSession: async (staffId, staffName, terminalId) => {
     const existing = get().getActiveSession(terminalId);
@@ -154,21 +148,28 @@ export const useShiftStore = create<ShiftStore>()((set, get) => ({
   getShiftSummary: (shiftId) => {
     const shift = get().shifts.find((s) => s.id === shiftId);
     if (!shift) {
-      return { openingFloat: 0, totalSales: 0, cashSales: 0, mpesaSales: 0, cardSales: 0, cashPaidIn: 0, cashPaidOut: 0, cashBanked: 0, totalPaidIn: 0, totalPaidOut: 0, totalDeposits: 0, expectedCash: 0, actualCash: 0, variance: 0, retainedFloat: 0, toBank: 0, mpesaTotal: 0, cardTotal: 0 };
+      return { openingFloat: 0, cashSales: 0, cashPaidIn: 0, cashPaidOut: 0, cashBanked: 0, totalPaidIn: 0, totalPaidOut: 0, expectedCash: 0, actualCash: 0, variance: 0, retainedFloat: 0, toBank: 0 };
     }
-    const transactions = get().getCashDrawerHistory(shiftId);
-    const cashSales = transactions.filter((t) => t.type === 'paid_in' && t.method === 'cash' && t.referenceType === 'sale').reduce((s, t) => s + t.amount, 0);
-    const mpesaSales = transactions.filter((t) => t.method === 'mpesa' && t.referenceType === 'sale').reduce((s, t) => s + t.amount, 0);
-    const cardSales = transactions.filter((t) => t.method === 'bank' && t.referenceType === 'sale').reduce((s, t) => s + t.amount, 0);
-    const cashPaidIn = transactions.filter((t) => t.type === 'paid_in' && t.method === 'cash').reduce((s, t) => s + t.amount, 0);
-    const cashPaidOut = transactions.filter((t) => t.type === 'paid_out' && t.method === 'cash').reduce((s, t) => s + t.amount, 0);
-    const cashBanked = transactions.filter((t) => t.type === 'bank_deposit').reduce((s, t) => s + t.amount, 0);
+    const movements = get().getCashMovements(shiftId);
+
     const openingFloat = shift.startingFloat;
-    const expectedCash = openingFloat + cashPaidIn - cashPaidOut - cashBanked;
-    const actualCash = shift.closingCash || expectedCash;
+    const cashSales = movements.filter((m) => m.type === 'SALE_CASH').reduce((s, m) => s + m.amount, 0);
+    const cashPaidIn = movements.filter((m) => m.type === 'CASH_IN').reduce((s, m) => s + m.amount, 0);
+    const cashPaidOut = movements.filter((m) => m.type === 'PAYOUT' || m.type === 'EXPENSE').reduce((s, m) => s + m.amount, 0);
+    const cashBanked = movements.filter((m) => m.type === 'BANKING').reduce((s, m) => s + m.amount, 0);
+
+    const expectedCash = openingFloat + cashSales + cashPaidIn - cashPaidOut - cashBanked;
+    const actualCash = shift.actualCash ?? expectedCash;
     const variance = Number((actualCash - expectedCash).toFixed(2));
     const retainedFloat = openingFloat;
     const toBank = Math.max(0, Number((expectedCash - retainedFloat).toFixed(2)));
-    return { openingFloat, totalSales: cashSales + mpesaSales + cardSales, cashSales, mpesaSales, cardSales, cashPaidIn, cashPaidOut, cashBanked, totalPaidIn: cashPaidIn, totalPaidOut: cashPaidOut, totalDeposits: cashBanked, expectedCash: Number(expectedCash.toFixed(2)), actualCash: Number(actualCash.toFixed(2)), variance, retainedFloat, toBank, mpesaTotal: mpesaSales, cardTotal: cardSales };
+
+    return {
+      openingFloat, cashSales, cashPaidIn, cashPaidOut, cashBanked,
+      totalPaidIn: cashPaidIn, totalPaidOut: cashPaidOut,
+      expectedCash: Number(expectedCash.toFixed(2)),
+      actualCash: Number(actualCash.toFixed(2)),
+      variance, retainedFloat, toBank,
+    };
   },
 }));

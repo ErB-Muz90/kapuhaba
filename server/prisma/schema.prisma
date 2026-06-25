@@ -43,7 +43,7 @@ model Customer {
 }
 
 model Sale {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   items         Json
   subtotal      Float
   tax           Float
@@ -53,7 +53,17 @@ model Sale {
   customerName  String?
   cashierId     String
   cashierName   String
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
+  payments      Payment[]
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  saleId    String
+  method    String   // CASH | MPESA | CARD
+  amount    Float
+  createdAt DateTime @default(now())
+  sale      Sale     @relation(fields: [saleId], references: [id])
 }
 
 model Expense {
@@ -190,20 +200,21 @@ model Shift {
   staffName     String
   terminalId    String
   startingFloat Float    @default(0)
-  openingCash   Float    @default(0)
-  closingCash   Float    @default(0)
   status        String   @default("active")
   startedAt     DateTime @default(now())
   endedAt       DateTime?
+  expectedCash  Float?
+  actualCash    Float?
+  variance      Float?
   notes         String?
 }
 
 model CashDrawerTransaction {
   id            String   @id @default(uuid())
   shiftId       String
-  type          String
+  type          String   // OPENING_FLOAT | SALE_CASH | CASH_IN | EXPENSE | PAYOUT | BANKING
+  direction     String   // IN | OUT
   amount        Float
-  method        String
   notes         String?
   referenceId   String?
   referenceType String?
