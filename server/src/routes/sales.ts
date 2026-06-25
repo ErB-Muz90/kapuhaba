@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
     where.createdAt = { gte: new Date(startDate as string), lte: new Date(endDate as string) };
   }
   const data = await prisma.sale.findMany({ where, orderBy: { createdAt: 'desc' } });
-  res.json(data);
+  res.json(data.map(s => ({ ...s, items: s.items ?? [] })));
 });
 
 router.get('/daily-summary', async (req, res) => {
@@ -60,18 +60,18 @@ router.get('/top-products', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const data = await prisma.sale.findUnique({ where: { id: req.params.id } });
   if (!data) { res.status(404).json({ error: 'Not found' }); return; }
-  res.json(data);
+  res.json({ ...data, items: data.items ?? [] });
 });
 
 router.post('/', async (req, res) => {
   const data = await prisma.sale.create({ data: req.body });
-  for (const item of (req.body.items as Array<{ productId: string; quantity: number }>)) {
+  for (const item of (req.body.items as Array<{ productId: string; quantity: number }>) ?? []) {
     await prisma.product.update({
       where: { id: item.productId },
       data: { stockQuantity: { decrement: item.quantity } },
     });
   }
-  res.json(data);
+  res.json({ ...data, items: data.items ?? [] });
 });
 
 router.delete('/:id', async (req, res) => {

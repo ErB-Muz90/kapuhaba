@@ -41,7 +41,7 @@ export const useSaleStore = create<SaleStore>()((set, get) => ({
     set({ loading: true });
     try {
       const sales = await api.get<Sale[]>('/sales');
-      set({ sales, loading: false });
+      set({ sales: sales.map(s => ({ ...s, items: s.items ?? [] })), loading: false });
     } catch { set({ loading: false }); }
   },
 
@@ -115,7 +115,7 @@ export const useSaleStore = create<SaleStore>()((set, get) => ({
         createdAt: new Date().toISOString(),
       });
 
-      set((state) => ({ sales: [...state.sales, sale] }));
+      set((state) => ({ sales: [...state.sales, { ...sale, items: sale.items ?? [] }] }));
       clearCart();
 
       const activeShift = useShiftStore.getState().getActiveShift();

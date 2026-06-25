@@ -50,7 +50,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
               </tr>
             </thead>
             <tbody>
-              {sale.items.map((item, index) => (
+              {(sale.items ?? []).map((item, index) => (
                 <tr key={index}>
                   <td className="py-1">
                     <div className="truncate max-w-[120px]">{item.productName}</div>
@@ -159,7 +159,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
             </tr>
           </thead>
           <tbody>
-            {sale.items.map((item, index) => (
+            {(sale.items ?? []).map((item, index) => (
               <tr key={index} className="border-b border-gray-200">
                 <td className="py-3 px-4">{index + 1}</td>
                 <td className="py-3 px-4">{item.productName}</td>
