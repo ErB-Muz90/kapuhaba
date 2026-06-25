@@ -18,7 +18,7 @@ import {
   Building2,
   Clock,
 } from 'lucide-react';
-import { subDays } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export function ZReport() {
