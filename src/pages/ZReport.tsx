@@ -83,7 +83,7 @@ export function ZReport() {
   const handleExportCSV = () => {
     const h = ['Shift', 'Cashier', 'Start', 'End', 'Float', 'Cash Sales', 'Cash In', 'Cash Out', 'Banked', 'Expected', 'Actual', 'Variance'];
     const rows = shiftRows.map(({ shift, summary }) => [
-      shift.id.slice(0, 8), shift.staffName,
+      (shift.id ?? '').slice(0, 8), shift.staffName,
       format(new Date(shift.startedAt), 'HH:mm'), shift.endedAt ? format(new Date(shift.endedAt), 'HH:mm') : 'OPEN',
       summary.openingFloat, summary.cashSales, summary.cashPaidIn, summary.cashPaidOut,
       summary.cashBanked, summary.expectedCash, summary.actualCash, summary.variance,

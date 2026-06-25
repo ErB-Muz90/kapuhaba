@@ -492,7 +492,7 @@ export function Reports() {
                     sales.slice(0, 10).map((sale) => (
                       <tr key={sale.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 text-sm font-mono text-gray-600">
-                          #{sale.id.slice(0, 8).toUpperCase()}
+                          #{(sale.id ?? '').slice(0, 8).toUpperCase()}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {format(new Date(sale.createdAt), 'MMM d, HH:mm')}

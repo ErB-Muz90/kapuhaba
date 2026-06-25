@@ -33,7 +33,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
 
           {/* Receipt info */}
           <div className="mb-2">
-            <p>Receipt #: {sale.id.slice(0, 8).toUpperCase()}</p>
+            <p>Receipt #: {(sale.id ?? '').slice(0, 8).toUpperCase()}</p>
             <p>Date: {format(new Date(sale.createdAt), 'dd/MM/yyyy HH:mm')}</p>
             <p>Cashier: {sale.cashierName}</p>
             {sale.customerName && <p>Customer: {sale.customerName}</p>}
@@ -123,7 +123,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
             <h2 className="text-2xl font-bold text-gray-800">RECEIPT</h2>
             <p className="text-gray-600 mt-2">
               <span className="font-medium">Receipt #:</span>{' '}
-              {sale.id.slice(0, 8).toUpperCase()}
+              {(sale.id ?? '').slice(0, 8).toUpperCase()}
             </p>
             <p className="text-gray-600">
               <span className="font-medium">Date:</span>{' '}

@@ -128,7 +128,7 @@ export const useShiftStore = create<ShiftStore>()((set, get) => ({
   linkSaleToCashDrawer: (shiftId, saleId, amount, paymentMethod) => {
     const method = paymentMethod === 'cash' ? 'cash' : paymentMethod === 'mpesa' ? 'mpesa' : 'bank';
     const type = paymentMethod === 'cash' ? 'paid_in' : paymentMethod === 'mpesa' ? 'mpesa_deposit' : 'paid_in';
-    get().addCashDrawerTransaction(shiftId, type as any, amount, method as any, `Sale ${saleId.slice(0, 8)} - ${paymentMethod.toUpperCase()}`, saleId, 'sale');
+    get().addCashDrawerTransaction(shiftId, type as any, amount, method as any, `Sale ${(saleId ?? '').slice(0, 8)} - ${paymentMethod.toUpperCase()}`, saleId, 'sale');
   },
 
   createSession: async (staffId, staffName, terminalId) => {
