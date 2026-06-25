@@ -105,7 +105,13 @@ router.put('/staff-password', authMiddleware, async (req, res) => {
 
 router.delete('/users/:employeeId', authMiddleware, async (req, res) => {
   try {
-    await prisma.user.delete({ where: { employeeId: req.params.employeeId } });
+    const { employeeId } = req.params;
+    if (typeof employeeId !== 'string') {
+      res.status(400).json({ error: 'Invalid employee ID' });
+      return;
+    }
+
+    await prisma.user.delete({ where: { employeeId } });
     res.json({ success: true });
   } catch {
     res.status(404).json({ error: 'User not found' });
