@@ -88,7 +88,7 @@ export function PurchaseOrders() {
   const stats = useMemo(() => ({
     total: purchaseOrders.length,
     pending: getPendingPOs().length,
-    totalValue: purchaseOrders.reduce((sum, po) => sum + po.total, 0),
+    totalValue: purchaseOrders.filter((po) => po.status !== 'cancelled').reduce((sum, po) => sum + po.total, 0),
   }), [purchaseOrders, getPendingPOs]);
 
   const handleAddItem = () => {
