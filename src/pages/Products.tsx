@@ -221,12 +221,12 @@ export function Products() {
 
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!importPreview || importPreview.valid.length === 0) return;
 
     setImporting(true);
     try {
-      const result = importProducts(importPreview.valid);
+      const result = await importProducts(importPreview.valid);
       setImportResult(result);
       setImportPreview(null);
 
