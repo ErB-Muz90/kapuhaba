@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { prisma } from '../db.js';
+import { prisma, normalizeDates } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
@@ -17,12 +17,14 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const data = await prisma.purchaseOrder.create({ data: req.body });
+  const body = normalizeDates(req.body, 'expectedDelivery', 'receivedDate');
+  const data = await prisma.purchaseOrder.create({ data: body });
   res.json(data);
 });
 
 router.put('/:id', async (req, res) => {
-  const data = await prisma.purchaseOrder.update({ where: { id: req.params.id }, data: req.body });
+  const body = normalizeDates(req.body, 'expectedDelivery', 'receivedDate');
+  const data = await prisma.purchaseOrder.update({ where: { id: req.params.id }, data: body });
   res.json(data);
 });
 

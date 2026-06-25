@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { prisma } from '../db.js';
+import { prisma, normalizeDates } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
@@ -11,7 +11,7 @@ router.get('/', async (_req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { amount, paidAmount = 0, ...rest } = req.body;
+  const { amount, paidAmount = 0, ...rest } = normalizeDates(req.body, 'invoiceDate', 'dueDate');
   const balance = amount - paidAmount;
   const status = balance <= 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'pending';
   const data = await prisma.accountPayable.create({
@@ -23,7 +23,8 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const existing = await prisma.accountPayable.findUnique({ where: { id: req.params.id } });
   if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
-  const { paidAmount, ...rest } = req.body;
+  const body = normalizeDates(req.body, 'invoiceDate', 'dueDate');
+  const { paidAmount, ...rest } = body;
   const newPaidAmount = paidAmount ?? existing.paidAmount;
   const newBalance = existing.amount - newPaidAmount;
   const newStatus = newBalance <= 0 ? 'paid' : newPaidAmount > 0 ? 'partial' : 'pending';
