@@ -73,7 +73,7 @@ export function AccountsPayable() {
   // Update overdue statuses on mount
   useEffect(() => {
     updateOverdueStatuses();
-  }, [payables, updateOverdueStatuses]);
+  }, [updateOverdueStatuses]);
 
   const filteredPayables = useMemo(() => {
     let result = payables;
