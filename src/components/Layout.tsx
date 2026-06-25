@@ -24,6 +24,7 @@ import {
   Clock,
   DollarSign,
   RotateCcw,
+  // Optional: add an expand icon for groups
 } from 'lucide-react';
 import { useProductStore } from '../store/productStore';
 
@@ -32,7 +33,7 @@ interface LayoutProps {
 }
 
 interface NavItem {
-  path: string;
+  path?: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   permission?: PermissionKey;
@@ -42,19 +43,43 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'core.dashboard' },
   { path: '/pos', label: 'POS', icon: ShoppingCart, permission: 'core.pos' },
-  { path: '/products', label: 'Products', icon: Package, permission: 'inventory.view' },
-  { path: '/stock', label: 'Stock Management', icon: Warehouse, permission: 'inventory.view' },
-  { path: '/customers', label: 'Customers', icon: Users, permission: 'customers.view' },
-  { path: '/loyalty', label: 'Loyalty Program', icon: Gift, permission: 'customers.view' },
-  { path: '/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers.view' },
-  { path: '/purchase-orders', label: 'Purchase Orders', icon: FileText, permission: 'purchase_orders.view' },
-  { path: '/returns', label: 'Returns', icon: RotateCcw, permission: 'inventory.view' },
-  { path: '/layaways', label: 'Layaways', icon: Package, permission: 'inventory.view' },
-  { path: '/accounts-payable', label: 'Accounts Payable', icon: CreditCard, permission: 'accounts_payable.view' },
-  { path: '/staff', label: 'Staff', icon: UserCog, permission: 'staff.view' },
-  { path: '/shifts', label: 'Shift Management', icon: Clock, permission: 'shifts.view' },
-  { path: '/expenses', label: 'Expenses', icon: DollarSign, permission: 'reports.expenses' },
-  { path: '/z-report', label: 'Z-Report (EOD)', icon: FileText, permission: 'reports.z_report' },
+  {
+    label: 'Inventory',
+    icon: Package,
+    children: [
+      { path: '/products', label: 'Products', icon: Package, permission: 'inventory.view' },
+      { path: '/stock', label: 'Stock Management', icon: Warehouse, permission: 'inventory.view' },
+    ],
+  },
+  {
+    label: 'People',
+    icon: Users,
+    children: [
+      { path: '/customers', label: 'Customers', icon: Users, permission: 'customers.view' },
+      { path: '/loyalty', label: 'Loyalty Program', icon: Gift, permission: 'customers.view' },
+      { path: '/staff', label: 'Staff', icon: UserCog, permission: 'staff.view' },
+      { path: '/shifts', label: 'Shift Management', icon: Clock, permission: 'shifts.view' },
+    ],
+  },
+  {
+    label: 'Purchasing',
+    icon: Truck,
+    children: [
+      { path: '/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers.view' },
+      { path: '/purchase-orders', label: 'Purchase Orders', icon: FileText, permission: 'purchase_orders.view' },
+      { path: '/accounts-payable', label: 'Accounts Payable', icon: CreditCard, permission: 'accounts_payable.view' },
+    ],
+  },
+  {
+    label: 'Sales',
+    icon: RotateCcw,
+    children: [
+      { path: '/returns', label: 'Returns', icon: RotateCcw, permission: 'inventory.view' },
+      { path: '/layaways', label: 'Layaways', icon: Package, permission: 'inventory.view' },
+      { path: '/expenses', label: 'Expenses', icon: DollarSign, permission: 'reports.expenses' },
+      { path: '/z-report', label: 'Z-Report (EOD)', icon: FileText, permission: 'reports.z_report' },
+    ],
+  },
   { path: '/reports', label: 'Reports & Analytics', icon: BarChart3, permission: 'sales.history' },
   { path: '/settings', label: 'Settings', icon: Settings, permission: 'core.settings' },
 ];
@@ -62,6 +87,8 @@ const navItems: NavItem[] = [
 export function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
+
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -109,27 +136,65 @@ export function Layout({ children }: LayoutProps) {
           </button>
         </div>
 
-        <nav className="p-4 space-y-1">
-          {filteredNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+          <nav className="p-4 space-y-1">
+            {filteredNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              if (item.children && item.children.length > 0) {
+                const isOpen = openGroups.includes(item.label);
+                return (
+                  <div key={item.label}>
+                    <button
+                      onClick={() => setOpenGroups((prev) => prev.includes(item.label) ? prev.filter((l) => l !== item.label) : [...prev, item.label])}
+                      className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${
+                        isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-slate-800 hover:text-white'}
+                      `}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="font-medium flex-1 text-left">{item.label}</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isOpen && (
+                      <div className="ml-4 mt-1 space-y-1">
+                        {item.children.filter((child) => !child.permission || hasPermission(user?.role, child.permission)).map((child) => {
+                          const ChildIcon = child.icon;
+                          const childActive = location.pathname === child.path;
+                          return (
+                            <Link
+                              key={child.path}
+                              to={child.path!}
+                              onClick={() => setSidebarOpen(false)}
+                              className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
+                                childActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-slate-800 hover:text-white'}
+                              `}
+                            >
+                              <ChildIcon className="w-4 h-4" />
+                              <span className="font-medium">{child.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path!}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isActive
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
           <button
