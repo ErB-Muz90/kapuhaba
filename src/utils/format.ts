@@ -136,7 +136,6 @@ export interface ParsedImportRow {
   sellingPrice: number;
   stockQuantity: number;
   lowStockThreshold: number;
-  errors: string[];
 }
 
 /**
@@ -223,7 +222,6 @@ export function parseImportCSV(csv: string): {
         sellingPrice,
         stockQuantity,
         lowStockThreshold,
-        errors: [],
       });
     }
   }

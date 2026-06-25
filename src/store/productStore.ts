@@ -120,7 +120,7 @@ export const useProductStore = create<ProductStore>()((set, get) => ({
     const newProducts: Product[] = [];
 
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+      const { errors: _e, ...row } = rows[i];
       const now = new Date().toISOString();
       const existingProduct = existing.find((p) => p.sku.toLowerCase() === row.sku.toLowerCase());
 
