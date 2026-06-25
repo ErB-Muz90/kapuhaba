@@ -115,7 +115,7 @@ export function Loyalty() {
   };
 
   const formatPoints = (points: number) => {
-    return points.toLocaleString();
+    return (points ?? 0).toLocaleString();
   };
 
   return (

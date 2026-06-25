@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useSettingsStore } from '../store/settingsStore';
 
 function _fmt(amount: number, symbol: string): string {
-  return `${symbol} ${amount.toLocaleString('en-US', {
+  return `${symbol} ${(amount ?? 0).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -30,7 +30,7 @@ export function formatCurrency(amount: number): string {
  * Format a points/loyalty number with locale grouping.
  */
 export function formatPoints(points: number): string {
-  return points.toLocaleString();
+  return (points ?? 0).toLocaleString();
 }
 
 /**
