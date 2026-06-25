@@ -5,6 +5,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useSettingsStore } from '../store/settingsStore';
 import { useAuthStore } from '../store/authStore';
+import { api } from '../api/client';
 import {
   Building2,
   Phone,
@@ -34,9 +35,7 @@ export function Settings() {
     if (!confirm('This is permanent. Type "RESET" to confirm.')) return;
 
     try {
-      const res = await fetch('/api/reset/all', { method: 'DELETE', headers: { Authorization: `Bearer ${useAuthStore.getState().token}` } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      await api.delete('/reset/all');
       localStorage.clear();
       window.location.reload();
     } catch (err: any) {
