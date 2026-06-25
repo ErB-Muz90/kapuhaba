@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useSaleStore } from '../store/saleStore';
 import { useProductStore } from '../store/productStore';
-import { useFormatCurrency } from '../utils/format';
+import { useFormatCurrency, safeFormat } from '../utils/format';
 import {
   DollarSign,
   ShoppingCart,
@@ -228,7 +228,7 @@ export function Dashboard() {
                           </p>
                           <p className="text-xs text-gray-500 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {format(new Date(sale.createdAt), 'HH:mm')}
+                            {safeFormat(sale.createdAt, 'HH:mm')}
                           </p>
                         </div>
                       </div>

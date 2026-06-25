@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { Button } from '../components/Button';
 import { useShiftStore } from '../store/shiftStore';
 import { useSaleStore } from '../store/saleStore';
-import { useFormatCurrency, escapeCSV } from '../utils/format';
+import { useFormatCurrency, escapeCSV, safeFormat } from '../utils/format';
 import {
   FileText,
   Printer,
@@ -18,7 +18,7 @@ import {
   Building2,
   Clock,
 } from 'lucide-react';
-import { format, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export function ZReport() {
@@ -84,7 +84,7 @@ export function ZReport() {
     const h = ['Shift', 'Cashier', 'Start', 'End', 'Float', 'Cash Sales', 'Cash In', 'Cash Out', 'Banked', 'Expected', 'Actual', 'Variance'];
     const rows = shiftRows.map(({ shift, summary }) => [
       (shift.id ?? '').slice(0, 8), shift.staffName,
-      format(new Date(shift.startedAt), 'HH:mm'), shift.endedAt ? format(new Date(shift.endedAt), 'HH:mm') : 'OPEN',
+      safeFormat(shift.startedAt, 'HH:mm'), shift.endedAt ? safeFormat(shift.endedAt, 'HH:mm') : 'OPEN',
       summary.openingFloat, summary.cashSales, summary.cashPaidIn, summary.cashPaidOut,
       summary.cashBanked, summary.expectedCash, summary.actualCash, summary.variance,
     ]);
@@ -234,8 +234,8 @@ export function ZReport() {
                       <tr key={shift.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 font-medium">{shift.staffName}</td>
                         <td className="px-4 py-3 text-gray-600">
-                          {format(new Date(shift.startedAt), 'HH:mm')}
-                          {shift.endedAt ? ` – ${format(new Date(shift.endedAt), 'HH:mm')}` : ''}
+                          {safeFormat(shift.startedAt, 'HH:mm')}
+                          {shift.endedAt ? ` – ${safeFormat(shift.endedAt, 'HH:mm')}` : ''}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${shift.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>

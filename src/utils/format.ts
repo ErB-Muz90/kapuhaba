@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useSettingsStore } from '../store/settingsStore';
+import { format } from 'date-fns';
 
 function _fmt(amount: number, symbol: string): string {
   return `${symbol} ${(amount ?? 0).toLocaleString('en-US', {
@@ -228,4 +229,15 @@ export function parseImportCSV(csv: string): {
   }
 
   return { valid, errors };
+}
+
+/**
+ * Safely format a date string with a fallback for invalid dates.
+ * Returns the formatted string or the fallback if the date is invalid.
+ */
+export function safeFormat(dateStr: string | undefined | null, fmt: string, fallback = '-'): string {
+  if (!dateStr) return fallback;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return fallback;
+  return format(d, fmt);
 }

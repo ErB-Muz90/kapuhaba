@@ -26,7 +26,8 @@ import {
   Timer,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { format, differenceInMinutes } from 'date-fns';
+import { differenceInMinutes } from 'date-fns';
+import { safeFormat } from '../utils/format';
 
 export function ShiftManagement() {
   const $c = useFormatCurrency();
@@ -190,7 +191,7 @@ export function ShiftManagement() {
                       <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full">ACTIVE</span>
                     </div>
                     <p className="text-slate-400 text-sm">
-                      Started {format(new Date(activeShift.startedAt), 'MMM d, yyyy · HH:mm')}
+                      Started {safeFormat(activeShift?.startedAt, 'MMM d, yyyy · HH:mm')}
                     </p>
                   </div>
                 </div>
@@ -370,7 +371,7 @@ export function ShiftManagement() {
                             {isIn ? '+' : '-'}{$c(tx.amount)}
                           </td>
                           <td className="px-6 py-3 text-sm text-gray-500 truncate max-w-[200px]">{tx.notes || '-'}</td>
-                          <td className="px-6 py-3 text-sm text-gray-500">{format(new Date(tx.createdAt), 'HH:mm:ss')}</td>
+                          <td className="px-6 py-3 text-sm text-gray-500">{safeFormat(tx.createdAt, 'HH:mm:ss')}</td>
                         </tr>
                       );
                     })}

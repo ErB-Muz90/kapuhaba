@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Receipt } from '../components/Receipt';
 import { useSaleStore } from '../store/saleStore';
-import { useFormatCurrency, escapeCSV } from '../utils/format';
+import { useFormatCurrency, escapeCSV, safeFormat } from '../utils/format';
 import type { Sale } from '../types';
 import {
   Calendar,
@@ -169,7 +169,7 @@ export function Reports() {
     const headers = ['ID', 'Date', 'Items', 'Subtotal', 'Tax', 'Total', 'Payment', 'Customer', 'Cashier'];
     const rows = sales.map((sale) => [
       sale.id,
-      format(new Date(sale.createdAt), 'yyyy-MM-dd HH:mm:ss'),
+      safeFormat(sale.createdAt, 'yyyy-MM-dd HH:mm:ss'),
       sale.items.length,
       sale.subtotal.toFixed(2),
       sale.tax.toFixed(2),
@@ -495,7 +495,7 @@ export function Reports() {
                           #{(sale.id ?? '').slice(0, 8).toUpperCase()}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
-                          {format(new Date(sale.createdAt), 'MMM d, HH:mm')}
+                          {safeFormat(sale.createdAt, 'MMM d, HH:mm')}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600 text-center">
                           {sale.items.length}

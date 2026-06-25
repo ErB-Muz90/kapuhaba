@@ -23,7 +23,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/format';
 
 const adjustmentTypes: { value: StockAdjustmentType; label: string }[] = [
   { value: 'adjustment', label: 'Stock Adjustment' },
@@ -271,7 +271,7 @@ export function StockManagement() {
                     </div>
                     <p className="text-sm text-gray-500">{adj.type} - {adj.reason}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {format(new Date(adj.createdAt), 'MMM d, HH:mm')} by {adj.performedBy}
+                      {safeFormat(adj.createdAt, 'MMM d, HH:mm')} by {adj.performedBy}
                     </p>
                   </div>
                 ))

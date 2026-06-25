@@ -1,8 +1,7 @@
 import { forwardRef } from 'react';
-import { format } from 'date-fns';
 import type { Sale } from '../types';
 import { useSettingsStore } from '../store/settingsStore';
-import { useFormatCurrency } from '../utils/format';
+import { useFormatCurrency, safeFormat } from '../utils/format';
 
 interface ReceiptProps {
   sale: Sale;
@@ -34,7 +33,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           {/* Receipt info */}
           <div className="mb-2">
             <p>Receipt #: {(sale.id ?? '').slice(0, 8).toUpperCase()}</p>
-            <p>Date: {format(new Date(sale.createdAt), 'dd/MM/yyyy HH:mm')}</p>
+            <p>Date: {safeFormat(sale.createdAt, 'dd/MM/yyyy HH:mm')}</p>
             <p>Cashier: {sale.cashierName}</p>
             {sale.customerName && <p>Customer: {sale.customerName}</p>}
           </div>
@@ -127,11 +126,11 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
             </p>
             <p className="text-gray-600">
               <span className="font-medium">Date:</span>{' '}
-              {format(new Date(sale.createdAt), 'MMMM dd, yyyy')}
+              {safeFormat(sale.createdAt, 'MMMM dd, yyyy')}
             </p>
             <p className="text-gray-600">
               <span className="font-medium">Time:</span>{' '}
-              {format(new Date(sale.createdAt), 'HH:mm:ss')}
+              {safeFormat(sale.createdAt, 'HH:mm:ss')}
             </p>
           </div>
         </div>

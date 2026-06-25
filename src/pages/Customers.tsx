@@ -18,7 +18,7 @@ import {
   Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/format';
 import { escapeCSV } from '../utils/format';
 
 type CustomerFormData = Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>;
@@ -100,7 +100,7 @@ export function Customers() {
       c.name,
       c.phone,
       c.email || '',
-      format(new Date(c.createdAt), 'yyyy-MM-dd HH:mm:ss'),
+      safeFormat(c.createdAt, 'yyyy-MM-dd HH:mm:ss'),
     ]);
 
     const csv = [headers, ...rows].map((row) => row.map(escapeCSV).join(',')).join('\n');
@@ -210,7 +210,7 @@ export function Customers() {
                     <div>
                       <h3 className="font-semibold text-gray-900">{customer.name}</h3>
                       <p className="text-sm text-gray-500">
-                        Added {format(new Date(customer.createdAt), 'MMM d, yyyy')}
+                        Added {safeFormat(customer.createdAt, 'MMM d, yyyy')}
                       </p>
                     </div>
                   </div>

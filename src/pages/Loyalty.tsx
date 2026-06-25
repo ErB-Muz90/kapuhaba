@@ -19,7 +19,7 @@ import {
   Crown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/format';
 
 export function Loyalty() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -302,7 +302,7 @@ export function Loyalty() {
                       </div>
                       <p className="text-sm text-gray-500">{tx.description}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {format(new Date(tx.createdAt), 'MMM d, HH:mm')}
+                        {safeFormat(tx.createdAt, 'MMM d, HH:mm')}
                       </p>
                     </div>
                   );
