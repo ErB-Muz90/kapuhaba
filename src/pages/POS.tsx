@@ -158,10 +158,10 @@ export function POS() {
     toast.success(`Customer: ${customer.name}`);
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!user || !activeShift) return;
     setProcessing(true);
-    const sale = completeSaleAction(
+    const sale = await completeSaleAction(
       paymentMethod,
       user.id,
       user.username,
